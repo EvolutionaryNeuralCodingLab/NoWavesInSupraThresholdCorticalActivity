@@ -107,7 +107,7 @@ The script loads two local files:
 
 ### `brain_mask.npy`
 
-A two-dimensional binary mask indicating pixels that belong to the cortex.
+A two-dimensional 128x128 binary mask indicating pixels that belong to the cortex.
 
 Expected values:
 
@@ -120,7 +120,7 @@ Its spatial dimensions must match the analyzed data.
 
 ### `outer_line_rgb.npy`
 
-An RGB image used as an anatomical or cortical outline in the generated figures.
+An 128x128 RGB image used as an anatomical or cortical outline in the generated figures.
 
 Its first two dimensions should match the spatial dimensions of the displayed data.
 
