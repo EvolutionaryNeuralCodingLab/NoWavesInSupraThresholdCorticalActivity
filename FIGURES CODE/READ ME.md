@@ -122,16 +122,6 @@ Its spatial dimensions must match the analyzed data.
 
 An 128x128 RGB image used as an anatomical or cortical outline in the generated figures.
 
-Its first two dimensions should match the spatial dimensions of the displayed data.
-
-The original script uses hard-coded paths such as:
-
-```python
-brain_mask = np.load(
-    "/Users/arielrom/Desktop/.../brain_mask.npy"
-)
-```
-
 Replace every hard-coded path with a path valid on your machine. A recommended approach is to define the paths once near the top of the script:
 
 ```python
@@ -164,40 +154,19 @@ gamma = 0.035
 ```
 
 ### `alpha`
-
 Horn–Schunck smoothness regularization parameter.
 
 - Lower values permit more spatial variation in the optical-flow field.
-- Higher values produce smoother flow fields.
+- Higher values enforce smoother flow fields suppress magnitude.
 
-Current value:
-
-```python
-alpha = 0.3
-```
 
 ### `iterations`
-
 Number of Horn–Schunck optimization iterations for every pair of consecutive frames.
-
-Current value:
-
-```python
-iterations = 150
-```
 
 Increasing this value may improve convergence but will increase execution time.
 
 ### `n`
-
-Radius of the local neighborhood used when spatially averaging the cumulative momentum field.
-
-Current value:
-
-```python
-n = 3
-```
-
+Radius of the local neighborhood used when spatially averaging the cumulative momentum field for visualization of directionality in the Waviness Map.
 This corresponds approximately to a local neighborhood of size:
 
 ```text
@@ -205,22 +174,12 @@ This corresponds approximately to a local neighborhood of size:
 ```
 
 ### `lim`
-
 Threshold applied to the pixel-level waviness values.
-
 Pixels with waviness greater than `lim` contribute to the final event-level score.
 
-Current value:
-
-```python
-lim = 0.5
-```
 
 ### `gamma`
-
-Relative variance-threshold coefficient used to determine active pixels.
-
-The script currently applies:
+Variance-threshold coefficient used to determine active pixels.
 
 ```python
 variance_threshold = gamma * 0.25
@@ -228,15 +187,6 @@ variance_threshold = gamma * 0.25
 
 For data normalized to `[0, 1]`, `0.25` is the maximum possible temporal variance. Therefore:
 
-```python
-gamma = 0.035
-```
-
-corresponds to:
-
-```python
-0.035 * 0.25
-```
 
 The threshold should be reconsidered if the data range or normalization method changes.
 
@@ -263,7 +213,7 @@ display.plot_data()
 display.full_analysis(
     space=5,
     scale=0.15,
-    data_type="retina",
+    data_type="cortex",
 )
 ```
 
@@ -285,14 +235,12 @@ Available options in the supplied script include:
 1 gaussian
 1 gaussian moving
 2 gaussian 2.25sig
-3 gaussian
 2 gaussian moving
+3 gaussian
 plane
 radial
 radial with gaps
 spiral
-2 diff gaussians moving
-cont
 ```
 
 Run a plane-wave example:
@@ -315,7 +263,7 @@ display.title = title
 display.full_analysis(
     space=5,
     scale=0.15,
-    data_type="retina",
+    data_type="cortex",
 )
 ```
 
@@ -324,8 +272,6 @@ Run a non-propagating Gaussian example:
 ```python
 dff1, title = data_type("1 gaussian")
 ```
-
-Synthetic propagating patterns such as plane and radial waves should generally yield higher waviness scores than stationary or sequential modular activations.
 
 ---
 
@@ -478,7 +424,7 @@ Set:
 phase=True
 ```
 
-to use `horn_schunck_phase`, provided that the custom phase-based implementation is available and appropriate for the data.
+to use `horn_schunck_phase`, an implementation of the Horn–Schunck algorithm adapted for circular phase values, thereby accounting for phase wrapping at (-\pi) and (+\pi)
 
 For each frame transition, the method stores:
 
@@ -511,7 +457,6 @@ analysis.calculate_waveness(type="cortex")
 The calculation contains three main components.
 
 ### Active-pixel selection
-
 Temporal variance is calculated for every pixel:
 
 ```python
@@ -527,7 +472,6 @@ variance > gamma * 0.25
 For cortical data, the pixel must also be inside the brain mask.
 
 ### Temporal directional coherence
-
 For every pixel, the script calculates:
 
 ```text
@@ -540,7 +484,6 @@ This ratio is bounded approximately between `0` and `1`.
 - Values near `0` indicate cancellation or changing momentum directions.
 
 ### Wavefront detection
-
 At each candidate pixel, the script:
 
 1. Aligns a rectangle with the local flow direction.
@@ -557,8 +500,7 @@ rect_size = (34, 4)
 
 This parameter may need adjustment when the spatial resolution or physical field of view changes.
 
-### Pixel-level waviness
-
+### Pixel-level values
 The final pixel value is:
 
 ```text
@@ -574,7 +516,6 @@ analysis.waveness[:, :, 3]
 ---
 
 ## 12. Event-level waviness score
-
 The final score is printed by:
 
 ```python
@@ -710,52 +651,11 @@ display.full_analysis(
 
 ---
 
-## 15. Recommended experimental-data example
 
-```python
-from pathlib import Path
-
-import numpy as np
-
-DATA_PATH = Path("data/event_001.npy")
-
-dff1 = np.load(DATA_PATH)
-
-if dff1.ndim != 3:
-    raise ValueError(
-        f"Input must have shape N × M × T; received {dff1.shape}."
-    )
-
-if not np.all(np.isfinite(dff1)):
-    raise ValueError("Input contains NaN or infinite values.")
-
-preprocessed = PreDataProcessing(dff1)
-
-analysis = FlowAnalyze(preprocessed)
-analysis.horn_schunck_flow(
-    alpha=alpha,
-    num_iter=iterations,
-    phase=False,
-)
-analysis.calculate_waveness(type="cortex")
-
-display = Display(analysis)
-display.title = DATA_PATH.stem
-display.full_analysis(
-    space=5,
-    scale=0.15,
-    data_type="cortex",
-)
-```
-
----
-
-## 16. Common problems
+## 15. Common problems
 
 ### `ModuleNotFoundError: No module named 'Algos'`
-
 Run the script from the repository root, where the `Algos` directory is located.
-
 Also confirm that `Algos/__init__.py` exists.
 
 ### Mask shape does not match the data
@@ -812,19 +712,8 @@ print(
 )
 ```
 
-### The score is unexpectedly high
-
-Check whether:
-
-- Noise produces false temporal gradients.
-- The active-pixel threshold is too permissive.
-- The wavefront profile thresholds are too permissive.
-- The data contain motion artifacts.
-- The normalization amplifies weak fluctuations.
-- The analyzed interval contains several separate events.
 
 ### PDF text is not editable
-
 The script sets:
 
 ```python
@@ -835,67 +724,12 @@ This normally preserves TrueType text in PDF output. Confirm that the requested 
 
 ---
 
-## 17. Important implementation notes
-
-The supplied script is research code and contains several items that should be reviewed before distribution or large-scale use.
-
-### Hard-coded local paths
-
-Multiple mask, outline, video, and output paths are specific to one computer. Move these paths into a configuration section.
-
-### Missing optional definitions
-
-The spiral-data branch references:
-
-```python
-MP4ToDff
-decrease_frame_rate
-normalize_data
-```
-
-These are not imported in the supplied script.
-
-### Duplicate condition
-
-`data_type()` contains two branches named:
-
-```python
-if type == "radial with gaps":
-```
-
-Only the first matching branch can be reached. Rename or remove one branch.
-
-### Unreachable duplicate return
-
-`find_max_min()` currently contains:
-
-```python
-return 1
-return 1
-```
-
-The second statement is unreachable and can be removed.
-
-### Built-in name shadowing
-
-Several functions use the name:
-
-```python
-type
-```
-
-as an argument. This shadows Python's built-in `type()` function. A clearer alternative is:
-
-```python
-data_kind
-```
+## 16. Important implementation notes
 
 ### Frame-rate assumption
-
 `plot_data()` assumes 25 frames per second. The frame rate should be supplied explicitly.
 
 ### In-place modification
-
 `full_analysis()` applies the display threshold directly to:
 
 ```python
@@ -909,45 +743,20 @@ display_alpha = data.waveness[:, :, 3].copy()
 display_alpha[display_alpha < self.lim] = 0
 ```
 
-### Repeated file loading
-
-The masks are loaded repeatedly inside different methods. Loading them once and passing them to the relevant classes will simplify the code and improve efficiency.
 
 ### Variance scaling
-
 The expression:
 
 ```python
 gamma * 0.25
 ```
 
-is valid only when the intended theoretical maximum variance is `0.25`, as for bounded `[0, 1]` data. Update it for data normalized differently, including data spanning `[-1, 1]`.
+is valid only when the intended theoretical maximum variance is `0.25`, as for bounded `[0, 1]` data. Update it for data normalized differently.
 
 ---
 
-## 18. Suggested command-line organization
 
-For reproducible batch use, the script can eventually be wrapped in a command-line interface such as:
-
-```bash
-python analysis.py \
-    --input data/event_001.npy \
-    --brain-mask brain_mask.npy \
-    --outer-line outer_line_rgb.npy \
-    --data-type cortex \
-    --fps 25 \
-    --alpha 0.3 \
-    --iterations 150 \
-    --variance-fraction 0.035 \
-    --waviness-threshold 0.5 \
-    --output results/event_001
-```
-
-The current script does not yet implement these command-line arguments.
-
----
-
-## 19. Output interpretation
+## 17. Output interpretation
 
 The analysis is intended to distinguish propagating waves from activity patterns that merely activate different spatial modules in sequence.
 
@@ -959,21 +768,3 @@ Interpret the output using all three panels:
 
 The event-level score should not be interpreted in isolation. Inspect the input data, active-pixel mask, optical-flow field, and waviness map, particularly when analyzing a new imaging modality or spatial resolution.
 
----
-
-## 20. Citation and research use
-
-When using this code in a publication or shared project, document:
-
-- Imaging modality.
-- Spatial dimensions and physical pixel size.
-- Acquisition frame rate.
-- Event-detection procedure.
-- Normalization procedure.
-- Optical-flow parameters.
-- Variance threshold.
-- Wavefront rectangle dimensions.
-- Waviness threshold.
-- Any modality-specific changes.
-
-This information is necessary to reproduce and correctly interpret the waviness score.
