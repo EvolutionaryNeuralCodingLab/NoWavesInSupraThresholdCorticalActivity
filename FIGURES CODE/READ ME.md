@@ -69,15 +69,6 @@ from Algos.Display import plot_quiver
 from Algos.Horn_Schunck import horn_schunck, horn_schunck_phase
 ```
 
-Some optional branches also reference the following objects, which must be imported or defined before those branches are used:
-
-```python
-MP4ToDff
-decrease_frame_rate
-normalize_data
-```
-
-These are required only for the current `"spiral"` example.
 
 ---
 
