@@ -26,6 +26,7 @@ from Algos.Display import plot_quiver
 from Algos.Create_Patterns import create_patterns, create_gaussians, create_gaussians_moving
 from Algos.Data_Processing import Filter, resize, decrease_frame_rate, normalize_data
 from Algos.Horn_Schunck import horn_schunck , horn_schunck_phase
+import os
 
 
 #### Algorithm parameters###
@@ -38,45 +39,6 @@ beta = 0.035
 plt.rcParams['font.family'] = 'Arial'
 matplotlib.rcParams['pdf.fonttype'] = 42
 
-import os
-
-
-class MP4ToDff:
-    def __init__(self, mp4):
-        self.mp4 = mp4
-        self.avi = mp4
-        self.dff = np
-
-    def mp4_video_to_numpy_gray(self):
-        try:
-            # Open the MP4 video file
-            cap = cv2.VideoCapture(self.avi)
-            if not cap.isOpened():
-                raise RuntimeError(f"Cannot open video: {self.avi}")
-            # Get the video properties
-            num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-            # Create an empty array to store the grayscale video frames
-            video_array_gray = np.zeros((num_frames, height, width), dtype=np.uint8)
-
-            # Read each frame, convert to grayscale, and store it in the array
-            for i in range(num_frames):
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                video_array_gray[i] = frame_gray
-            # Release the video capture object
-            cap.release()
-
-            self.dff = np.transpose(video_array_gray, (1, 2, 0))
-            self.N = self.dff.shape[0]
-            self.M = self.dff.shape[1]
-
-        except Exception as e:
-            print(f"Error processing video: {e}")
 
 
 class PreDataProcessing:
@@ -93,50 +55,6 @@ class PreDataProcessing:
         self.dff = resized_dff
         self.N = resized_dff.shape[0]
         self.M = resized_dff.shape[1]
-
-    def filter(self, fil, sigma, kernel):
-        ## filter = 'gaussian' , 'bilateral' , 'average' , 'normalize'
-        filtered_dff = np.zeros((self.dff.shape[0], self.dff.shape[1], self.dff.shape[2]))
-        for i in range(self.dff.shape[2]):
-            filtered_dff[:, :, i] = Filter(self.dff[:, :, i], fil=str(fil), sigma=sigma, kernel=kernel)
-        self.dff = filtered_dff
-
-    def add_noise(self, std):
-        for t in range(self.frames):
-            self.dff[:, :, t] += np.random.normal(0, std, size=(self.N, self.M))
-
-    def add_noise_temporal(self, std):
-        for i in range(self.N):
-            for j in range(self.M):
-                self.dff[i, j, :] += np.random.normal(0, std, size=self.frames)
-
-    def delta_f_over_f(self, T1, T2):
-
-        delta_f_over_f_video = np.zeros_like(self.dff, dtype=np.float64)
-
-        # Iterate over each pixel position
-        for i in range(self.dff.shape[0]):
-            for j in range(self.dff.shape[1]):
-                window = np.ones(T1) / T1
-
-                # Apply convolution to compute the rolling average
-                floating_avg = np.convolve(self.dff[i, j, :], window, mode='same')
-
-                # Compute the floating minimum using a minimum filter
-                baseline_f = minimum_filter(floating_avg, size=T2)
-
-                delta_f = self.dff[i, j, :] - baseline_f
-
-                delta_f_over_f = delta_f / baseline_f
-
-                # Explicitly set ΔF/F to zero where baseline was zero
-                zero_mask = (baseline_f == 0)
-                delta_f_over_f[zero_mask] = 0  # Set ΔF/F to zero where baseline is zero
-
-                # Store the result in the output array
-                delta_f_over_f_video[i, j, :] = delta_f_over_f
-
-        self.dff = delta_f_over_f_video
 
 
 class FlowAnalyze:
@@ -254,9 +172,6 @@ class FlowAnalyze:
             # mask: (N, M), boolean
             # Make sure mask is True where activity exists
 
-            # Temporal gradient
-
-            # print(f"Adaptive limit = {lim:.5f}")
 
             # Find peaks (maxima)
             peaks, _ = find_peaks(smoothed_data, prominence=prominence, height=height, distance=distance)
@@ -274,9 +189,6 @@ class FlowAnalyze:
 
             # Check if there is exactly one peak and one trough, and peak appears before trough
             if len(peaks) == 1 and len(troughs) == 1 and troughs[0] < peaks[0]:
-                # print("normal")
-                # print(peaks , smoothed_data[peaks[0]])
-                # print(troughs, smoothed_data[troughs[0]])
                 return 1
 
             return 0
@@ -435,103 +347,8 @@ class FlowAnalyze:
             profile_1d = np.array(extracted_values)
             profile_1d = profile_1d[profile_1d != 0]  # Exclude zero values
 
-            masked_gradients_nan = np.where(masked_gradients == 0, np.nan, masked_gradients)
-
             # Call the find_max_min function on the smoothed gradients
             score = find_max_min(profile_1d, sigma=sigma, prominence=prominence, lim_up=lim_up, lim_down=lim_down)
-            if score == 10:
-                figsize_cm = (22, 12)
-                figsize_in = tuple(x / 2.54 for x in figsize_cm)
-                fig, axes = plt.subplots(2, 3, figsize=figsize_in)
-
-                im0 = axes[0, 0].imshow(frame, cmap='Blues', vmin=0, vmax=1)
-                cbar0 = fig.colorbar(im0, ax=axes[0, 0], fraction=0.046, pad=0.04)
-                cbar0.ax.tick_params(labelsize=10)
-                cbar0.set_ticks([0, 1])
-                cbar0.set_ticklabels(['0', '1'])
-                axes[0, 1].imshow(frame, cmap='Blues', vmin=0, vmax=1)
-                plot_quiver(axes[0, 1], self.phase_space[:, :, t, :], spacing=4, scale=0.05, color='black')
-                axes[0, 1].set_ylim(frame.shape[0], 0)
-
-                dff_gradient = np.gradient(self.dff, axis=2)  # Time derivative of dff
-                im2 = axes[0, 2].imshow(dff_gradient[:, :, 16], cmap="RdBu", vmin=-0.15, vmax=0.15)
-                cbar2 = fig.colorbar(im2, ax=axes[0, 2], fraction=0.046, pad=0.04)
-                cbar2.ax.tick_params(labelsize=10)
-                cbar2.set_ticks([-0.15, 0, 0.15])
-                cbar2.set_ticklabels(['-0.15', '0', '0.15'])
-
-                axes[1, 0].imshow(frame, cmap='Blues', vmin=0, vmax=1)
-                plot_quiver(axes[1, 0], self.phase_space[:, :, t, :], spacing=4, scale=0.05, color='black')
-                axes[1, 0].scatter(x, y, color='darkviolet', s=30)
-                axes[1, 0].imshow(masked_gradients_nan, cmap='RdBu', vmin=-0.15, vmax=0.15)
-                axes[1, 0].set_aspect('auto')
-                axes[1, 0].set_ylim(frame.shape[0], 0)
-
-                smoothed_data = gaussian_filter1d(profile_1d, sigma=sigma)
-
-                axes[1, 1].plot(profile_1d, marker='o', linestyle='-', color='royalblue', label='1D Signal ',
-                                markersize=4)
-                axes[1, 1].set_ylim([-0.25, 0.25])
-
-                axes[1, 1].set_ylabel("Time Derivative")
-                axes[1, 1].set_xlabel("Index")
-
-                # Plot the 1D flattened gradients
-                axes[1, 2].plot(profile_1d, marker='o', linestyle='-', color='royalblue', markersize=4, alpha=0.8,
-                                linewidth=1.5)
-                axes[1, 2].plot(smoothed_data, marker=' ', linestyle='-', color='brown', label='Smoothed 1D Signal ',
-                                markersize=4, linewidth=1.5)
-
-                axes[1, 2].axhline(y=lim_down, color='black', linestyle='--', linewidth=1)  # First line at y=-0.0429
-                axes[1, 2].axhline(y=lim_up, color='black', linestyle='--', linewidth=1)  # Second line at y=0.0439
-                axes[1, 2].set_xlabel("Index")
-                axes[1, 2].set_ylim([-0.15, 0.15])
-
-                handles, labels = axes[1, 1].get_legend_handles_labels()
-                fig.legend(
-                    handles, labels,
-                    loc='lower center',  # or 'upper center', depending on your layout
-                    bbox_to_anchor=(0.5, 0.47),  # center horizontally, slightly below the figure
-                    frameon=False,
-                    fontsize=8,
-                    ncol=3,  # <-- this makes it a single row
-                    handlelength=2.3
-                )
-
-                cbar0 = fig.colorbar(im0, ax=axes[0, 1], fraction=0.046, pad=0.04)
-                cbar0.set_ticks([-0.15, 0, 0.15])
-                cbar0.set_ticklabels(['-0.15', '0', '0.15'])
-                cbar0 = fig.colorbar(im0, ax=axes[1, 0], fraction=0.046, pad=0.04)
-                cbar0.set_ticks([-0.15, 0, 0.15])
-                cbar0.set_ticklabels(['-0.15', '0', '0.15'])
-                cbar0 = fig.colorbar(im0, ax=axes[1, 1], fraction=0.046, pad=0.04)
-                cbar0.set_ticks([-0.15, 0, 0.15])
-                cbar0.set_ticklabels(['-0.15', '0', '0.15'])
-                cbar0 = fig.colorbar(im0, ax=axes[1, 2], fraction=0.046, pad=0.04)
-                cbar0.set_ticks([-0.15, 0, 0.15])
-                cbar0.set_ticklabels(['-0.15', '0', '0.15'])
-
-                handles, labels = axes[1, 2].get_legend_handles_labels()
-                first_legend = plt.legend([handles[0]], [labels[0]],
-                                          loc='upper center',
-                                          bbox_to_anchor=(0.5, 1.23),
-                                          frameon=False,
-                                          fontsize=8)
-
-                # Second legend: the other two entries
-                second_legend = plt.legend(handles[1:], labels[1:],
-                                           loc='upper center',
-                                           bbox_to_anchor=(0.5, 1.14),
-                                           frameon=False,
-                                           fontsize=8,
-                                           ncol=2)
-
-                plt.gca().add_artist(first_legend)  # keep the first legend
-
-                plt.tight_layout()
-
-                plt.savefig("figure.pdf", format="pdf", dpi=600, bbox_inches='tight')
-                plt.show()
 
             return score
 
@@ -720,13 +537,6 @@ def data_type(type):
 
         return dff, title
 
-    if type == '2 gaussian moving':
-        dff1, params = create_gaussians_moving(N=64, M=128, frames=60, num_gaus=2, x0=5, y0=70, sd0=10, t0_0=19, sdT0=10 \
-                                               , x1=5, y1=60 + 25, sd1=10, t0_1=19 + 25, sdT1=10)
-
-        title = r'2 Moving Gaussians $\Delta$X=$\Delta$T=2.5$\sigma$, $\sigma$=6'
-        return dff1, title
-
     if type == 'plane':
         dff1 = create_patterns(N=128, M=64, frames=40, pattern='plane', x0=32, y0=90, sd0=8, u=0, v=1, rad_spd=1,rad_width=5)
 
@@ -743,18 +553,6 @@ def data_type(type):
         # dff1 = create_patterns(N=64, M=64, frames=23, pattern='radial', x0=32, y0=32, sd0=2, u=0, v=1, rad_spd=1,rad_width=5)
 
         #dff1 = create_patterns(N=128, M=64, frames=50, pattern='radial', x0=30, y0=138, sd0=2, u=0, v=1,rad_spd=3, rad_width=5)
-
-        title = 'Radial Wave'
-
-        return dff1, title
-
-    if type == 'two radials':
-        dff1 = create_patterns(N=128, M=64, frames=40, pattern='radial', x0=20, y0=110, sd0=1, u=0, v=0.5, rad_spd=0.5,
-                               rad_width=2)
-        dff1 += create_patterns(N=128, M=64, frames=40, pattern='radial', x0=45, y0=20, sd0=1, u=0, v=0.5, rad_spd=0.5,
-                                rad_width=2)
-        dff1 += create_patterns(N=128, M=64, frames=40, pattern='radial', x0=35, y0=60, sd0=1, u=0, v=0.5, rad_spd=0.5,
-                                rad_width=2)
 
         title = 'Radial Wave'
 
@@ -781,106 +579,11 @@ def data_type(type):
         return dff1, title
 
     if type == 'spiral':
-        video_path = "/Users/arielrom/Desktop/תואר שני/Thesis/AnalyzedData/spiral.mp4"
-        mp4_data = MP4ToDff(video_path)
-        mp4_data.mp4_video_to_numpy_gray()
-        #print(mp4_data.dff)
-
-        # mp4_data.dff = mp4_data.dff[:,:,1200:1380] #1100,1400   ,  530,710
-        # mp4_data.dff = mp4_data.dff[:,:,1220:1400] #1100,1400   ,  530,710
-        mp4_data.dff = mp4_data.dff[145:, 65:-80, 1330:1530]  # 1100,1400   ,  530,710 , 1240:1380
-        mp4_data.dff = decrease_frame_rate(mp4_data.dff, 10, 5)
-        mp4_data.frames = mp4_data.dff.shape[2]
-
-        mp4_data.dff = mp4_data.dff - 60
-        mp4_data.dff[mp4_data.dff > 200] = 0
-
-        mp4_data.dff = normalize_data(mp4_data.dff)
-
+        dff1 = np.load("spiral example.npy")
         title = 'Spiral Wave'
-        return mp4_data.dff, title
-
-    if type == '2 diff gaussians moving':
-        dff2, params = create_gaussians_moving(N=70, M=70, frames=50, num_gaus=1, x0=20, y0=50, sd0=5, t0_0=10, sdT0=5)
-
-        dff1, params = create_gaussians_moving(N=70, M=70, frames=50, num_gaus=2, x0=5, y0=25, sd0=5, t0_0=10, sdT0=5,
-                                               x1=25, y1=5, sd1=5, t0_1=10, sdT1=5,
-                                               x2=None, y2=None, sd2=None, t0_2=None, sdT2=None)
-
-        dff = dff1 + dff2
-
-        title = fr'2 Gaussians $\sigma_x$={params[6]} , $\sigma_T$={params[8]}'
-
-        return dff, title
-
-    if type == 'cont':
-        dff1 = create_patterns(N=50, M=50, frames=70, pattern='cont', x0=20, y0=-10, sd0=7, u=0, v=1, rad_spd=0.3,
-                               rad_width=3)
-        title = 'cont'
-
-        return dff1, title
-        # dff1= create_pattenrs(N=60, M=60, frames=70, pattern='cont', x0=35, y0=-20, sd0=8, u=0, v=1,rad_spd=0.3, rad_width=4)
-
-    if type == 'radial with gaps':
-        dff1 = create_patterns(N=128, M=128, frames=23, pattern='radial', x0=32, y0=80, sd0=1, u=0, v=1, rad_spd=1,
-                               rad_width=2)
-
-        # dff1[16,11:20,:] = 0
-        # dff1[15,18:26,:] = 0
-        # dff1[16,24:31,:] = 0
-        # dff1[17, 30:35,:] = 0
-        # dff1[16, 33:40,:] = 0
-
-        dff1[65, 10:60, :] = 0
-        dff1[66, 10:60, :] = 0
-
-        # dff1[94,10:60,:]=0
-        dff1[95, 10:60, :] = 0
-
-        title = 'Radial Wave'
 
         return dff1, title
 
-    if type == 'cortex':
-        x = scipy.io.loadmat(
-            "/Users/arielrom/Desktop/תואר שני/Thesis/AnalyzedData/Early Tryings/spont_4000f_MMStack_Pos0_1.mat")
-        mat_data = MatlabToDff(x)
-        mat_data.enhance()
-        dff1 = normalize_data(mat_data.dff[:, :, 50:1950])
-        # dff1 = normalize_data(mat_data.dff[:, :, 450:510])
-
-        # dff1 = mat_data.dff[120:270,10:160,245:305] ##(426,511) ##(0,450) , (200,400)
-
-        title = 'spont_4000f_MMStack_Pos0_1'
-
-        return dff1, title
-        # return decrease_frame_rate(dff1,10,5), title
-
-        # return dff1[:,:,175:245] , title
-        # return dff1[:,:,285:305] , title
-
-    if type == 'SD':
-        video_path = "/Users/arielrom/Desktop/תואר שני/Thesis/AnalyzedData/FullCode/SD_WAVE.mp4"
-        mp4_data = MP4ToDff(video_path)
-
-        mp4_data.mp4_video_to_numpy_gray()
-        # np.save("SD NUMPY",mp4_data.dff)
-        # mp4_data.dff = mp4_data.dff[200:600,300:700,350:560]
-
-        # mp4_data.dff = normalize_data(mp4_data.dff)
-
-        dff1 = mp4_data.dff
-        # np.save("SD_Normalized",dff1)
-        # dff1 = np.load('SD_Normalized.npy')
-        dff1 = dff1[420:700, 400:680, 250:-300]
-        # savemat('my_array.mat', {'dff': decrease_frame_rate(dff1, 30, 10)})
-
-        print(decrease_frame_rate(dff1, 20, 10).shape)
-
-        title = 'Spreading Depression '
-
-        # return dff1 , title
-        return decrease_frame_rate(dff1, 20, 10), title
 
 
 
@@ -888,7 +591,6 @@ def bandpass_filter_video(video, lowcut, highcut, fs, order=4):
     nyquist = 0.5 * fs
     low = lowcut / nyquist
     high = highcut / nyquist
-    print(low, high)
 
     b, a = butter(order, [low, high], btype='band')
 
@@ -1119,120 +821,61 @@ def preprocess_spiral(data):
     data.dff = shifted
 
 
-def plot_dataset_row(
-    axes,
-    config,
-    brain_mask,
-    space,
-    scale,
-    waviness_cmap,
-    phase_map,
-    settings,
-):
+def plot_dataset_row( axes, config, brain_mask, space,scale, waviness_cmap, phase_map, settings):
     original_dff, _ = data_type(config["data_type"])
 
-    plot_source_image(axes[0], config["image"])
-
-    data = analyze_dataset(
-        original_dff,
-        brain_mask,
-        preprocess=config.get("preprocess"),
-    )
+    data = analyze_dataset( original_dff, brain_mask, preprocess=config.get("preprocess"))
 
     values = data.waveness[:, :, 3][data.mask == 1]
 
-    ratio = ratio_over_lim(
-        values,
-        data.mask,
-        settings["lim"],
-    )
+    ratio = ratio_over_lim( values, data.mask, settings["lim"])
+
     print(f'{config["label"]}: {ratio:.4f}')
 
-    plot_histogram(
-        axes[1],
-        values,
-        threshold=settings["lim"],
-        bins=settings["bins"],
-        color=settings["hist_color"],
-        edge_color=settings["edge_color"],
-        line_width=settings["hist_width"],
-    )
+    plot_histogram( axes[0], values, threshold=settings["lim"], bins=settings["bins"], color=settings["hist_color"], edge_color=settings["edge_color"], line_width=settings["hist_width"])
 
-    plot_flow(
-        axes[2],
-        data,
-        space=space,
-        scale=scale,
-        color=settings["quiver_color"],
-        width=settings["quiver_width"],
-    )
+    plot_flow(axes[1], data, space=space, scale=scale, color=settings["quiver_color"], width=settings["quiver_width"])
 
-    plot_waviness(
-        axes[3],
-        data,
-        threshold=settings["lim"],
-        cmap=waviness_cmap,
-        grey=settings["grey"],
-    )
+    plot_waviness( axes[2], data, threshold=settings["lim"], cmap=waviness_cmap, grey=settings["grey"])
 
-    plot_phase(
-        axes[4],
-        data,
-        original_dff,
-        frame=config["phase_frame"],
-        cmap=phase_map,
-        config=config,
-    )
+    plot_phase( axes[3], data, original_dff, frame=config["phase_frame"], cmap=phase_map, config=config)
 
 
 def figure_plot(space, scale):
-    base_thesis = (
-        "/Users/arielrom/Desktop/תואר שני/Thesis/"
-        "Waves Detection Algorithm"
-    )
-    base_presentation = (
-        "/Users/arielrom/Desktop/תואר שני/Presentation/"
-        "Progress Report 2"
-    )
+
 
     datasets = [
 
         {
             "data_type": "plane",
             "label": "plane",
-            "image": f"{base_thesis}/Figure 3 sketches/Plane.png",
             "phase_frame": 20,
         },
         {
             "data_type": "1 gaussian",
             "label": "1 gaussian",
-            "image": f"{base_thesis}/Figure 3 sketches/1 Gaussian.png",
             "phase_frame": 35,
         },
         {
             "data_type": "spiral",
             "label": "spiral",
-            "image": f"{base_thesis}/Figure 3 sketches/Spiral.png",
             "phase_frame": 35,
             "preprocess": preprocess_spiral,
         },
         {
             "data_type": "2 gaussian 2.25sig",
             "label": "2 gaussians",
-            "image": f"{base_thesis}/Figure 3 sketches/2 Gaussians.png",
             "phase_frame": 35,
         },
         {
             "data_type": "radial",
             "label": "radial",
-            "image": f"{base_thesis}/Figure 3 sketches/Radial.png",
             "phase_frame": 22,
         },
         {
             "data_type": "3 gaussian",
             "label": "3 gaussian",
             # Replace this if the 3-Gaussian illustration has its own file.
-            "image": f"{base_presentation}/Radial_with_bounadries.png",
             "phase_frame": 12,
             "bandpass": True,
             "fs": 35.0,
@@ -1242,13 +885,11 @@ def figure_plot(space, scale):
         {
             "data_type": "radial with gaps",
             "label": "radial with gaps",
-            "image": f"{base_presentation}/Radial_with_bounadries.png",
             "phase_frame": 22,
         },
         {
             "data_type": "1 gaussian moving",
             "label": "1 gaussian moving",
-            "image": f"{base_presentation}/1 Gaussian Moving.png",
             "phase_frame": 31,
         }
     ]
@@ -1267,40 +908,34 @@ def figure_plot(space, scale):
     figsize_cm = (18, 18)
     figsize_inches = tuple(value / 2.54 for value in figsize_cm)
 
-    fig, axes = plt.subplots(
-        nrows=4,
-        ncols=10,
-        figsize=figsize_inches,
-    )
+    fig, axes = plt.subplots( nrows=4, ncols=8, figsize=figsize_inches )
 
     waviness_cmap = cyclic_hsv_cmap()
     waviness_cmap.set_bad("white")
 
     phase_map = phase_cmap()
 
-    brain_mask = np.load(
-        f"{base_thesis}/brain_mask.npy"
-    )[:, :64]
+    brain_mask = np.load(f"brain_mask.npy")[:, :64]
 
-    # Each dataset occupies five consecutive panels.
+    # Each dataset occupies four consecutive panels.
     # First four datasets are placed on the left half,
     # and the next four on the right half.
     panel_locations = [
         (0, 0),
-        (0, 5),
+        (0, 4),
         (1, 0),
-        (1, 5),
+        (1, 4),
         (2, 0),
-        (2, 5),
+        (2, 4),
         (3, 0),
-        (3, 5),
+        (3, 4),
     ]
 
     for config, (row, start_column) in zip(
         datasets,
         panel_locations,
     ):
-        row_axes = axes[row, start_column:start_column + 5]
+        row_axes = axes[row, start_column:start_column + 4]
 
         plot_dataset_row(
             axes=row_axes,
@@ -1317,7 +952,6 @@ def figure_plot(space, scale):
     plt.show()
 
 
+
 figure_plot(space = 5, scale = 0.15)
 
-#figure_plot_real_data(space = 5, scale = 0.15)
-#
