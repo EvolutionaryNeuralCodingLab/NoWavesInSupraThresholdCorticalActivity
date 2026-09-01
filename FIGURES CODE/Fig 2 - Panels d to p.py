@@ -5,18 +5,19 @@ from itertools import chain
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import ListedColormap
 import matplotlib.colors as mcolors
+import os
 
 
 
 
-score_color = "#5f86d6" #'royalblue'  #4A7DDB
+score_color = "#5f86d6"
 score_edge = '#000000'
 
-area_color = "#6baa91" #'mediumseagreen' #2AA37A
-area_edge = "#000000" #'darkgreen'
+area_color = "#6baa91"
+area_edge = "#000000"
 
-length_color = "#B97878" #"tomato" #C94A4A
-length_edge = "#000000" #"darkred"
+length_color = "#B97878"
+length_edge = "#000000"
 linewidth = 0.5
 
 # Create final figure
@@ -45,11 +46,15 @@ for row in [3, 4]:
 
 
 
+
+base_path = ''
+statistics_path = os.path.join( base_path, 'Fig 2 - statistics')
+
+
+
 video_name = '218MN'  ### Fig 2 video
 
-
-data = np.load(f'/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/{video_name}/{video_name}_all_data.npy', allow_pickle=True).item()
-
+data = np.load(os.path.join(statistics_path,f'{video_name}_statistics.npy'),allow_pickle=True).item()
 
 min_area=-0.1
 score_data, area_data, duration_data, energy_data, intervals_data = [], [], [], [], []
@@ -104,14 +109,14 @@ for i, video in enumerate(data):
     score_data.append(video_scores)
     area_data.append(video_areas)
 
-mean1 = np.load(f'/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/{video_name}/MEAN_{video_name}_wf_raw_data_0to3.npy')
-mean2 = np.load(f'/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/{video_name}/MEAN_{video_name}_wf_raw_data_4to7.npy')
-mean3 = np.load(f'/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/{video_name}/MEAN_{video_name}_wf_raw_data_8to11.npy')
-mean4 = np.load(f'/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/{video_name}/MEAN_{video_name}_wf_raw_data_12to15.npy')
-mean5 = np.load(f'/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/{video_name}/MEAN_{video_name}_wf_raw_data_16to19.npy')
-mean6 = np.load(f'/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/{video_name}/MEAN_{video_name}_wf_raw_data_20to23.npy')
-mean7 = np.load(f'/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/{video_name}/MEAN_{video_name}_wf_raw_data_24to27.npy')
-mean8 = np.load(f'/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/{video_name}/MEAN_{video_name}_wf_raw_data_28to29.npy')
+mean1 = np.load(f'Fig 2 - statistics/MEAN_{video_name}_wf_raw_data_0to3.npy')
+mean2 = np.load(f'Fig 2 - statistics/MEAN_{video_name}_wf_raw_data_4to7.npy')
+mean3 = np.load(f'Fig 2 - statistics/MEAN_{video_name}_wf_raw_data_8to11.npy')
+mean4 = np.load(f'Fig 2 - statistics/MEAN_{video_name}_wf_raw_data_12to15.npy')
+mean5 = np.load(f'Fig 2 - statistics/MEAN_{video_name}_wf_raw_data_16to19.npy')
+mean6 = np.load(f'Fig 2 - statistics/MEAN_{video_name}_wf_raw_data_20to23.npy')
+mean7 = np.load(f'Fig 2 - statistics/MEAN_{video_name}_wf_raw_data_24to27.npy')
+mean8 = np.load(f'Fig 2 - statistics/MEAN_{video_name}_wf_raw_data_28to29.npy')
 
 print(mean1.shape)
 long_mean = np.concatenate([mean1, mean2, mean3, mean4, mean5, mean6, mean7, mean8])
@@ -285,38 +290,38 @@ axes[2].tick_params(axis='y', labelsize=8)
 
 
 ############################
-data_54MRL = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/54MRL/54MRL_all_data.npy', allow_pickle=True).item()
-data_63MR = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/63MR/63MR_all_data.npy', allow_pickle=True).item()
-data_187FN = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/187FN/187FN_all_data.npy', allow_pickle=True).item()
-data_203MN = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/203MN/203MN_all_data.npy', allow_pickle=True).item()
-data_204FR = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/204FR/204FR_all_data.npy', allow_pickle=True).item()
-data_206FRL = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/206FRL/206FRL_all_data.npy', allow_pickle=True).item()
-data_211MRR = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/211MRR/211MRR_all_data.npy', allow_pickle=True).item()
-data_218MN = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/218MN/218MN_all_data.npy', allow_pickle=True).item()
-data_21ML = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/21ML/21ML_all_data.npy', allow_pickle=True).item()
-data_221ML = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/221ML/221ML_all_data.npy', allow_pickle=True).item()
-
-print(data_211MRR['211MRR_20to23'])
-
-def activity_map():
-    activity_map_54MRL = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/54MRL/54MRL_activity_map.npy')
-    activity_map_63MR = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/63MR/63MR_activity_map.npy')
-    activity_map_187FN = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/187FN/187FN_activity_map.npy')
-    activity_map_203MN = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/203MN/203MN_activity_map.npy')
-    activity_map_204FR = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/204FR/204FR_activity_map.npy')
-    activity_map_206FRL = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/206FRL/206FRL_activity_map.npy')
-    activity_map_211MRR = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/211MRR/211MRR_activity_map.npy')
-    activity_map_218MN = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/218MN/218MN_activity_map.npy')
-    activity_map_21ML = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/21ML/21ML_activity_map.npy')
-
-    activity_map = activity_map_54MRL + activity_map_63MR + activity_map_187FN + activity_map_203MN + activity_map_204FR + activity_map_206FRL + activity_map_211MRR + activity_map_218MN + activity_map_21ML
 
 
-    plt.imshow(activity_map,  cmap='tab20c')  # Use 'gray' colormap for grayscale
-    plt.colorbar()  # Add color bar for better understanding
-    plt.title('128x128 Array Visualization')
-    plt.axis('off')  # Hide axes for a cleaner view (optional)
-    plt.show()
+
+experiments = [
+    '54MRL',
+    '63MR',
+    '187FN',
+    '203MN',
+    '204FR',
+    '206FRL',
+    '211MRR',
+    '218MN',
+    '21ML',
+    '221ML'
+]
+
+all_data = {experiment: np.load(os.path.join( statistics_path, f'{experiment}_statistics.npy'), allow_pickle=True ).item() for experiment in experiments }
+
+
+data_54MRL = all_data['54MRL']
+data_63MR = all_data['63MR']
+data_187FN = all_data['187FN']
+data_203MN = all_data['203MN']
+data_204FR = all_data['204FR']
+data_206FRL = all_data['206FRL']
+data_211MRR = all_data['211MRR']
+data_218MN = all_data['218MN']
+data_21ML = all_data['21ML']
+data_221ML = all_data['221ML']
+
+
+
 def process_data(data, min_area, offset):
     scores, areas, durations, energies, intervals = [], [], [], [], []
 
