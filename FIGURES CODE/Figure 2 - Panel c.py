@@ -9,6 +9,7 @@ import numpy as np
 from matplotlib.colors import LinearSegmentedColormap, hsv_to_rgb
 from scipy.ndimage import binary_erosion, gaussian_filter1d, minimum_filter
 from scipy.signal import find_peaks
+import os
 
 from Algos.Data_Processing import Filter, resize
 from Algos.Create_Patterns import create_patterns, create_gaussians, create_gaussians_moving
@@ -24,16 +25,6 @@ gamma = 0.035
 plt.rcParams['font.family'] = 'Arial'
 matplotlib.rcParams['pdf.fonttype'] = 42
 
-class MatlabToDff:
-    def __init__(self, data):
-        self.dff = data['dFF']
-        self.N, self.M, self.frames = self.dff.shape
-
-    def enhance(self):
-
-        self.dff = np.where(self.dff == -1, 0, self.dff)
-
-import os
 
 class PreDataProcessing:
     def __init__(self, data):
@@ -93,7 +84,6 @@ class PreDataProcessing:
                 delta_f_over_f_video[i, j, :] = delta_f_over_f
 
         self.dff = delta_f_over_f_video
-
 
 class FlowAnalyze:
     def __init__(self, data):
@@ -803,10 +793,7 @@ class Display:
 brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
 
 
-
-
 dff1 = np.load("Fig 2 Example.npy")  ## data of shape NxMxT
-print(dff1.shape)
 
 data = PreDataProcessing(dff1)
 
