@@ -71,63 +71,6 @@ class PreDataProcessing:
         self.N = resized_dff.shape[0]
         self.M = resized_dff.shape[1]
 
-    def filter(self, fil, sigma, kernel):
-        ## filter = 'gaussian' , 'bilateral' , 'average' , 'normalize'
-        filtered_dff = np.zeros((self.dff.shape[0], self.dff.shape[1], self.dff.shape[2]))
-        for i in range(self.dff.shape[2]):
-            filtered_dff[:, :, i] = Filter(self.dff[:, :, i], fil=str(fil), sigma=sigma, kernel=kernel)
-        self.dff = filtered_dff
-
-    def add_noise(self, std):
-        for t in range(self.frames):
-            self.dff[:, :, t] += np.random.normal(0, std, size=(self.N, self.M))
-
-    def add_noise_temporal(self, std):
-        for i in range(self.N):
-            for j in range(self.M):
-                self.dff[i, j, :] += np.random.normal(0, std, size=self.frames)
-
-    def delta_f_over_f(self, T1, T2):
-        """
-        Compute ΔF/F for a video with a floating minimum baseline.
-
-        Parameters:
-        - video: 3D numpy array of shape (N, M, frames) representing the video.
-        - T1: Integer representing the size of the sliding window for the average filter.
-        - T2: Integer representing the size of the sliding window for the minimum filter among the averages.
-
-        Returns:
-        - delta_f_over_f_video: 3D numpy array of the same shape as the input video, containing the ΔF/F values.
-
-        Based on 'In vivo two-photon imaging of sensory-evoked dendritic calcium signal in cortal neurons" - Arthur Konnerth
-        """
-
-        delta_f_over_f_video = np.zeros_like(self.dff, dtype=np.float64)
-
-        # Iterate over each pixel position
-        for i in range(self.dff.shape[0]):
-            for j in range(self.dff.shape[1]):
-                window = np.ones(T1) / T1
-
-                # Apply convolution to compute the rolling average
-                floating_avg = np.convolve(self.dff[i, j, :], window, mode='same')
-
-                # Compute the floating minimum using a minimum filter
-                baseline_f = minimum_filter(floating_avg, size=T2)
-
-                delta_f = self.dff[i, j, :] - baseline_f
-
-                delta_f_over_f = delta_f / baseline_f
-
-                # Explicitly set ΔF/F to zero where baseline was zero
-                zero_mask = (baseline_f == 0)
-                delta_f_over_f[zero_mask] = 0  # Set ΔF/F to zero where baseline is zero
-
-                # Store the result in the output array
-                delta_f_over_f_video[i, j, :] = delta_f_over_f
-
-        self.dff = delta_f_over_f_video
-
 
 class FlowAnalyze:
     def __init__(self, data):
@@ -804,7 +747,7 @@ class Display:
                 momentum[:, :, 1] *= brain_mask
 
                 ax_top = top_axes[i]
-                im = ax_top.imshow(1.1*self.dff[:, :, frame_idx] , cmap=self.color_map, vmin=0, vmax=1)
+                im = ax_top.imshow(self.dff[:, :, frame_idx] , cmap=self.color_map, vmin=0, vmax=1)
                 ax_top.set_aspect('equal')
                 ax_top.axis('off')
 
@@ -834,7 +777,6 @@ class Display:
         plt.savefig('Sup fig 1.pdf', bbox_inches='tight')
 
         plt.show()
-
 
     def full_analysis_3columns(self, space, scale, data_type):
 
@@ -967,7 +909,7 @@ class Display:
 brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
 
 
-brain_mask = brain_mask#[:, :64]
+brain_mask = brain_mask
 
 
 ### MAIN EXAMPLE FIG 2
@@ -981,13 +923,7 @@ data = FlowAnalyze(data)
 data.horn_schunck_flow(alpha=alpha, num_iter=iterations, phase=False)
 #data.calculate_waveness(type='retina')
 display = Display(data)
-display.title = 'SD'
-#display.plot_data()
+display.title = 'Fig 2 example'
 display.plot_frames( space = 6 , scale = 0.04)
-
-#display.plot_ca_only()
-
-#display.plot_frames_hilbert(space=6, scale=0.75)
-#display.plot_frames_2(space = 7 , scale = 0.025  )
 #display.full_analysis_3columns(space=7, scale=0.15, data_type="retina")
 
