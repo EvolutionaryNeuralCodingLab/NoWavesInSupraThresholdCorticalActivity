@@ -682,11 +682,6 @@ def analyze_dataset(dff, brain_mask, preprocess=None):
     return data
 
 
-def plot_source_image(ax, image_path):
-    ax.imshow(mpimg.imread(image_path))
-    ax.axis("off")
-
-
 def plot_histogram(ax, values, threshold, bins, color, edge_color, line_width):
     ax.hist(
         values,
@@ -803,24 +798,6 @@ def plot_phase(ax, data, original_dff, frame, cmap, config):
     ax.axis("off")
 
 
-def preprocess_spiral(data):
-    data.resize(135, 135)
-    data.dff = data.dff[7:, 25:89, :]
-    data.dff[:70, :, :] = 0
-
-    shift_row = 4
-    shift_col = 3
-
-    shifted = np.zeros_like(data.dff)
-    shifted[:-shift_row, shift_col:, :] = data.dff[
-        shift_row:,
-        :-shift_col,
-        :,
-    ]
-
-    data.dff = shifted
-
-
 def plot_dataset_row( axes, config, brain_mask, space,scale, waviness_cmap, phase_map, settings):
     original_dff, _ = data_type(config["data_type"])
 
@@ -860,7 +837,6 @@ def figure_plot(space, scale):
             "data_type": "spiral",
             "label": "spiral",
             "phase_frame": 35,
-            "preprocess": preprocess_spiral,
         },
         {
             "data_type": "2 gaussian 2.25sig",
