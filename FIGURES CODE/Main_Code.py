@@ -922,24 +922,10 @@ def data_type(type):
         return dff1, title
 
     if type == 'spiral':
-        video_path = "/Users/arielrom/Desktop/תואר שני/Thesis/AnalyzedData/spiral.mp4"
-        mp4_data = MP4ToDff(video_path)
-        mp4_data.mp4_video_to_numpy_gray()
-        #print(mp4_data.dff)
-
-        # mp4_data.dff = mp4_data.dff[:,:,1200:1380] #1100,1400   ,  530,710
-        # mp4_data.dff = mp4_data.dff[:,:,1220:1400] #1100,1400   ,  530,710
-        mp4_data.dff = mp4_data.dff[145:, 65:-80, 1330:1530]  # 1100,1400   ,  530,710 , 1240:1380
-        mp4_data.dff = decrease_frame_rate(mp4_data.dff, 10, 5)
-        mp4_data.frames = mp4_data.dff.shape[2]
-
-        mp4_data.dff = mp4_data.dff - 60
-        mp4_data.dff[mp4_data.dff > 200] = 0
-
-        mp4_data.dff = normalize_data(mp4_data.dff)
-
+        dff1 = np.load('spiral example.npy')
         title = 'Spiral Wave'
-        return mp4_data.dff, title
+        
+        return dff1, title
 
     if type == '2 diff gaussians moving':
         dff2, params = create_gaussians_moving(N=70, M=70, frames=50, num_gaus=1, x0=20, y0=50, sd0=5, t0_0=10, sdT0=5)
@@ -962,29 +948,10 @@ def data_type(type):
         return dff1, title
         # dff1= create_pattenrs(N=60, M=60, frames=70, pattern='cont', x0=35, y0=-20, sd0=8, u=0, v=1,rad_spd=0.3, rad_width=4)
 
-    if type == 'radial with gaps':
-        dff1 = create_patterns(N=128, M=128, frames=23, pattern='radial', x0=32, y0=80, sd0=1, u=0, v=1, rad_spd=1,
-                               rad_width=2)
-
-        # dff1[16,11:20,:] = 0
-        # dff1[15,18:26,:] = 0
-        # dff1[16,24:31,:] = 0
-        # dff1[17, 30:35,:] = 0
-        # dff1[16, 33:40,:] = 0
-
-        dff1[65, 10:60, :] = 0
-        dff1[66, 10:60, :] = 0
-
-        # dff1[94,10:60,:]=0
-        dff1[95, 10:60, :] = 0
-
-        title = 'Radial Wave'
-
-        return dff1, title
 
 
 dff1,title = data_type('1 gaussian')
-dff1,title = data_type('plane')
+#dff1,title = data_type('plane')
 
 #dff1 = np.load("")  ## data of shape NxMxT
 
