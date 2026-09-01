@@ -13,9 +13,9 @@ from Algos.Create_Patterns import create_patterns, create_gaussians, create_gaus
 
 
 def data_type(type):
-    if type == '2 gaussian 2.25sig':
-        dff1, params = create_gaussians(N=64, M=128, frames=65, num_gaus=2, x0=32, y0=70 - 16, sd0=16, t0_0=14 + 16,sdT0=8, x1=32, y1=70 + 16, sd1=16, t0_1=14, sdT1=8)
-        title = r'2 Gaussians $\Delta$X=$\Delta$T=2.25$\sigma$'
+    if type == '2 gaussian':
+        dff1, params = create_gaussians(N=64, M=128, frames=65, num_gaus=2, x0=32, y0=70 - 16, sd0=16, t0_0=14 + 16,sdT0=9, x1=32, y1=70 + 16, sd1=16, t0_1=14, sdT1=9)
+        title = r'2 Gaussians'
 
         return dff1, title
 
@@ -30,7 +30,7 @@ def schematic_figure():
     brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
     brain_mask = brain_mask[:, :64]
     dff1, title = data_type('radial')
-    dff2, title = data_type('2 gaussian 2.25sig')
+    dff2, title = data_type('2 gaussian')
     while brain_mask.ndim < dff1.ndim:
         brain_mask = np.expand_dims(brain_mask, axis=-1)
     dff1 *= brain_mask
