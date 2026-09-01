@@ -111,19 +111,6 @@ class PreDataProcessing:
                 self.dff[i, j, :] += np.random.normal(0, std, size=self.frames)
 
     def delta_f_over_f(self, T1, T2):
-        """
-        Compute ΔF/F for a video with a floating minimum baseline.
-
-        Parameters:
-        - video: 3D numpy array of shape (N, M, frames) representing the video.
-        - T1: Integer representing the size of the sliding window for the average filter.
-        - T2: Integer representing the size of the sliding window for the minimum filter among the averages.
-
-        Returns:
-        - delta_f_over_f_video: 3D numpy array of the same shape as the input video, containing the ΔF/F values.
-
-        Based on 'In vivo two-photon imaging of sensory-evoked dendritic calcium signal in cortal neurons" - Arthur Konnerth
-        """
 
         delta_f_over_f_video = np.zeros_like(self.dff, dtype=np.float64)
 
@@ -1209,6 +1196,13 @@ def figure_plot(space, scale):
     )
 
     datasets = [
+
+        {
+            "data_type": "plane",
+            "label": "plane",
+            "image": f"{base_thesis}/Figure 3 sketches/Plane.png",
+            "phase_frame": 20,
+        },
         {
             "data_type": "1 gaussian",
             "label": "1 gaussian",
@@ -1216,10 +1210,11 @@ def figure_plot(space, scale):
             "phase_frame": 35,
         },
         {
-            "data_type": "1 gaussian moving",
-            "label": "1 gaussian moving",
-            "image": f"{base_presentation}/1 Gaussian Moving.png",
-            "phase_frame": 31,
+            "data_type": "spiral",
+            "label": "spiral",
+            "image": f"{base_thesis}/Figure 3 sketches/Spiral.png",
+            "phase_frame": 35,
+            "preprocess": preprocess_spiral,
         },
         {
             "data_type": "2 gaussian 2.25sig",
@@ -1234,25 +1229,6 @@ def figure_plot(space, scale):
             "phase_frame": 22,
         },
         {
-            "data_type": "plane",
-            "label": "plane",
-            "image": f"{base_thesis}/Figure 3 sketches/Plane.png",
-            "phase_frame": 20,
-        },
-        {
-            "data_type": "radial with gaps",
-            "label": "radial with gaps",
-            "image": f"{base_presentation}/Radial_with_bounadries.png",
-            "phase_frame": 22,
-        },
-        {
-            "data_type": "spiral",
-            "label": "spiral",
-            "image": f"{base_thesis}/Figure 3 sketches/Spiral.png",
-            "phase_frame": 35,
-            "preprocess": preprocess_spiral,
-        },
-        {
             "data_type": "3 gaussian",
             "label": "3 gaussian",
             # Replace this if the 3-Gaussian illustration has its own file.
@@ -1263,6 +1239,18 @@ def figure_plot(space, scale):
             "lowcut": 2,
             "highcut": 8.0,
         },
+        {
+            "data_type": "radial with gaps",
+            "label": "radial with gaps",
+            "image": f"{base_presentation}/Radial_with_bounadries.png",
+            "phase_frame": 22,
+        },
+        {
+            "data_type": "1 gaussian moving",
+            "label": "1 gaussian moving",
+            "image": f"{base_presentation}/1 Gaussian Moving.png",
+            "phase_frame": 31,
+        }
     ]
 
     settings = {
