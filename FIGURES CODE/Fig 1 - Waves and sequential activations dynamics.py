@@ -14,13 +14,13 @@ from Algos.Create_Patterns import create_patterns, create_gaussians, create_gaus
 
 def data_type(type):
     if type == '2 gaussian 2.25sig':
-        dff1, params = create_gaussians(N=64, M=128, frames=65, num_gaus=2, x0=32, y0=70 - 18, sd0=16, t0_0=22 + 22.5,sdT0=10, x1=32, y1=70 + 18, sd1=16, t0_1=22, sdT1=10)
+        dff1, params = create_gaussians(N=64, M=128, frames=65, num_gaus=2, x0=32, y0=70 - 16, sd0=16, t0_0=14 + 16,sdT0=8, x1=32, y1=70 + 16, sd1=16, t0_1=14, sdT1=8)
         title = r'2 Gaussians $\Delta$X=$\Delta$T=2.25$\sigma$'
 
         return dff1, title
 
     if type == 'radial':
-        dff1 = create_patterns(N=128, M=64, frames=49, pattern='radial', x0=32, y0=80, sd0=2, u=0, v=1, rad_spd=0.5,rad_width=3)
+        dff1 = create_patterns(N=128, M=64, frames=49, pattern='radial', x0=32, y0=135, sd0=3, u=0, v=1, rad_spd=2.9,rad_width=5)
         title = 'Radial Wave'
 
         return dff1, title
