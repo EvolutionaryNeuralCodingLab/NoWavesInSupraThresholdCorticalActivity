@@ -2,9 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-# -------------------------------
-# Settings
-# -------------------------------
+
+
 area_color = '#6baa91'
 area_edge = '#000000'
 score_color = '#5f86d6'
@@ -18,18 +17,16 @@ offset = 3700
 
 datasets = ['54MRL', '63MR', '187FN', '203MN', '204FR', '206FRL', '211MRR', '218MN', '21ML', '221ML']
 
-# -------------------------------
-# Load data
-# -------------------------------
+
+### LOAD DATA
 data_dict = {}
 for name in datasets:
     data_dict[name] = np.load(
-        f'/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/{name}/{name}_all_data.npy',
+        f'Fig 2 - statistics/{name}_statistics.npy',
         allow_pickle=True).item()
 
-# -------------------------------
-# Function to process dataset
-# -------------------------------
+
+
 def process_data(data, min_area, offset):
     scores, areas, durations = [], [], []
     for i, video in enumerate(data):
@@ -43,9 +40,9 @@ def process_data(data, min_area, offset):
                 last_end = end
     return scores, areas, durations
 
-# -------------------------------
-# Process all datasets
-# -------------------------------
+
+
+
 scores_all, areas_all, lengths_all = [], [], []
 for name in datasets:
     s, a, l = process_data(data_dict[name], min_area, offset)
@@ -53,9 +50,8 @@ for name in datasets:
     areas_all.append(a)
     lengths_all.append(l)
 
-# -------------------------------
-# Histogram bins
-# -------------------------------
+
+
 bin_list = [
     np.linspace(0, 1, 11),  # scores
     np.linspace(0, 1, 11),  # areas
@@ -65,18 +61,14 @@ bin_list = [
 colors = [score_color, area_color, length_color]
 edge_colors = [score_edge, area_edge, length_edge]
 
-# -------------------------------
-# Create figure
-# -------------------------------
+
 figsize_cm = (18, 18)
 figsize_in = tuple(x / 2.54 for x in figsize_cm)
 fig = plt.figure(figsize=figsize_in)
 outer_gs = gridspec.GridSpec(nrows=5, ncols=6, figure=fig, hspace=0.75, wspace=0.4)
 
 label_size = 8
-# -------------------------------
-# Plot loop
-# -------------------------------
+
 for i in range(5):  # 5 rows
     for j in range(2):  # 2 datasets per row
         idx = i*2 + j
@@ -156,9 +148,7 @@ for i in range(5):  # 5 rows
             ax_area.set_xlabel("Active Area", fontsize=8)
             ax_length.set_xlabel("Length [sec]", fontsize=8)
 
-# -------------------------------
-# Layout
-# -------------------------------
+
 plt.tight_layout()
 plt.savefig("Figure_All_Datasets_5x6.pdf", dpi=1000)
 plt.show()
