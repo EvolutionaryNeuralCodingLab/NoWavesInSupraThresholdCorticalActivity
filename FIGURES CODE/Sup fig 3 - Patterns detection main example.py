@@ -1541,10 +1541,10 @@ def save_all_frames_figure(data, flow, raw_detections, pattern_presence, frames=
     n_frames = len(frames)
     nrows = math.ceil(n_frames / ncols)
 
-    outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb_64.npy')
+    outer_line_rgb = np.load('outer_line_rgb_64.npy')
     outer_line_rgb = outer_line_rgb[:, 32:]
 
-    brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask_64.npy')
+    brain_mask = np.load('brain_mask_64.npy')
     brain_mask = brain_mask[:, 32:]
     brain_mask = np.flipud(brain_mask)
 
