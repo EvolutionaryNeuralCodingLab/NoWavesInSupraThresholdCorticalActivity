@@ -131,16 +131,6 @@ class FlowAnalyze:
             plt.tight_layout()
             plt.show()
 
-        #means = np.mean(np.array(all_convergence), axis=0)
-        #plt.figure(figsize=(8, 5))
-        #plt.plot(means, linewidth=2)
-        #plt.xlabel("Iteration")
-        #plt.ylabel("Mean flow update (L2 norm)")
-        #plt.title("Horn–Schunck Convergence")
-        #plt.grid(True, alpha=0.3)
-        #plt.xlim([0,150])
-        #plt.tight_layout()
-        #plt.show()
 
     def calculate_waveness(self, type):
 
@@ -165,7 +155,7 @@ class FlowAnalyze:
         # neighborhood_size = ((2 * self.n + 1) ** 2 - 4 * (2 * self.n))   ## First order
         neighborhood_size = (2 * self.n + 1) ** 2 - (4 * 2 * self.n) - (4 * (2 * n - 2))  ## Second order
 
-        brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
+        brain_mask = np.load('brain_mask.npy')
         if self.dff.shape[1] == 64:
             brain_mask = brain_mask[:, :64]
 
@@ -700,9 +690,9 @@ class Display:
         fig, ax = plt.subplots()
         # title = "test"
         # self.title="sda"
-        brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask_64.npy')
+        brain_mask = np.load('brain_mask_64.npy')
         brain_mask = brain_mask[:, :]
-        outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb_64.npy')
+        outer_line_rgb = np.load('outer_line_rgb_64.npy')
 
         def phase_cmap():
             smooth_cycle = mcolors.LinearSegmentedColormap.from_list(
@@ -815,7 +805,7 @@ class Display:
         for axis in [ax, ax3]:
             axis.set_aspect('equal')
 
-        outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+        outer_line_rgb = np.load('outer_line_rgb.npy')
 
         outer_line_rgba = np.ones((*outer_line_rgb.shape[:2], 4))  # Start with white and alpha = 1
 
@@ -829,9 +819,8 @@ class Display:
         self.sum_phase_space[self.sum_phase_space[:, :, -1, 1] == 0] = np.nan
 
         if data_type == 'cortex':
-            brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
-            outer_line_rgb = np.load(
-                '/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+            brain_mask = np.load('brain_mask.npy')
+            outer_line_rgb = np.load(outer_line_rgb.npy')
 
             ax.imshow(outer_line_rgb)
             ax3.imshow(outer_line_rgb)
@@ -990,16 +979,8 @@ def phase_cmap():
 # Example usage:
 cmap = cyclic_hsv_cmap()
 
-#dff1 =np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/retina_dF_F_second_file.npy')
-#dff1=dff1[:,:,360:]
-
-
-
-#dff1 =np.load("/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/211MRR/211MRR_wf_raw_data_20to23.npy")
-#dff1 = dff1[:, :, 2809:2852]
 
 dff1 = np.load('Fig 2 Example.npy')
-
 dff1_L = dff1
 
 
@@ -1047,9 +1028,6 @@ def classify_jacobian_patterns(flow,dff1,
     pattern_presence = np.zeros((5, T), dtype=int)
     raw_detections = [[] for _ in range(T)]
 
-    # ============================================================
-    # Helper functions (keeping yours exactly as provided)
-    # ============================================================
 
     def bilinear_coeffs(f00, f10, f01, f11):
         return f00, f10 - f00, f01 - f00, f11 - f10 - f01 + f00
@@ -1125,9 +1103,8 @@ def classify_jacobian_patterns(flow,dff1,
         return np.array([[du_dx, du_dy],
                          [dv_dx, dv_dy]])
 
-    # ============================================================
-    # 1️⃣ Compute standing-wave threshold
-    # ============================================================
+                                   
+    ### Standing-wave 
 
     avg_mags = []
 
@@ -1141,9 +1118,8 @@ def classify_jacobian_patterns(flow,dff1,
     avg_mags = np.array(avg_mags)
     standing_thresh = np.mean(avg_mags) - 2 * np.std(avg_mags)
 
-    # ============================================================
-    # 2️⃣ Spatial detection
-    # ============================================================
+                                   
+    ### Spatial detection
 
     for t in range(T):
 
@@ -1156,17 +1132,15 @@ def classify_jacobian_patterns(flow,dff1,
         mags = np.sqrt(u_m ** 2 + v_m ** 2)
         v_avg = np.mean(mags) if len(mags) > 0 else 0
 
-        # --------------------------------------------------------
-        # Standing wave (mutually exclusive with plane)
-        # --------------------------------------------------------
+        ### Standing wave (mutually exclusive with plane)
+        
         if v_avg < standing_thresh:
             pattern_presence[4, t] = 1
             continue
 
         else:
-            # ----------------------------------------------------
-            # Plane wave (homogeneity R)
-            # ----------------------------------------------------
+            ### Plane wave (homogeneity R)
+
             if v_avg > 1e-5:
                 sum_vec = np.array([np.sum(u_m), np.sum(v_m)])
                 R = np.linalg.norm(sum_vec) / (mags.size * v_avg)
@@ -1176,9 +1150,7 @@ def classify_jacobian_patterns(flow,dff1,
                 if R >= plane_threshold:
                     pattern_presence[0, t] = 1
 
-        # --------------------------------------------------------
-        # Singularities (sources/sinks/saddles)
-        # --------------------------------------------------------
+        ### Singularities (sources/sinks/saddles)
 
         for i in range(1, N - 2):  # avoid edges for 3x3
             for j in range(1, M - 2):
@@ -1259,17 +1231,9 @@ def classify_jacobian_patterns(flow,dff1,
                 else:
                     continue
 
-                    # ------------------------------------------------
-                    # Angular criteria: only for Source/Sink
-                    # ------------------------------------------------
-
-
 
                 if ptype == "Saddle":
-                    raw_detections[t].append({
-                        'type': ptype,
-                        'pos': np.array([cy, cx])
-                    })
+                    raw_detections[t].append({'type': ptype,'pos': np.array([cy, cx]) })
 
                 elif ptype in ["Source", "Sink"]:
 
@@ -1327,10 +1291,8 @@ def classify_jacobian_patterns(flow,dff1,
                 t_majority = max([types[k] for k in cluster_idx], key=[types[k] for k in cluster_idx].count)
                 merged.append({'pos': avg_pos, 'type': t_majority})
             raw_detections[t] = merged
-    # ============================================================
-    # 3️⃣ Temporal persistence tracking
-    # ============================================================
 
+                                   
     type_map = {"Source": 1, "Sink": 2, "Saddle": 3}
     active_tracks = []
 
@@ -1472,10 +1434,10 @@ def animate_waves(data,flow, raw_detections, pattern_presence, interval=100):
 
     T = len(raw_detections)
 
-    outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb_64.npy')
+    outer_line_rgb = np.load('outer_line_rgb_64.npy')
     outer_line_rgb = outer_line_rgb[:, 32:]
 
-    brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask_64.npy')
+    brain_mask = np.load('brain_mask_64.npy')
     brain_mask = brain_mask[:, 32:]
     brain_mask = np.flipud(brain_mask)  # flip vertically
 
@@ -1520,7 +1482,6 @@ def animate_waves(data,flow, raw_detections, pattern_presence, interval=100):
             ys.append(y)
             colors.append(pattern_colors[ptype])
 
-            # ---- ADD LABEL HERE ----
             ax.text(
                 x + 2, y + 2,  # small offset so it doesn't overlap dot
                 ptype,
@@ -1564,11 +1525,7 @@ def animate_waves(data,flow, raw_detections, pattern_presence, interval=100):
 
 
         return ax
-    anim = FuncAnimation(fig,
-                         update,
-                         frames=T,
-                         interval=interval,
-                         blit=False)
+    anim = FuncAnimation(fig, update, frames=T, interval=interval, blit=False)
 
     plt.tight_layout()
     anim.save(f"1 Gaussian analysis .gif", writer='ffmpeg', fps=12.5)
@@ -1609,9 +1566,6 @@ data.dff = gaussian_filter(data.dff, sigma=[1.5, 1.5, 0])
 dff1_R = data.dff
 
 data.horn_schunck_flow(alpha=alpha, num_iter=iterations,phase=False )
-#display=Display(data)
-#display.title = 'sd'
-#display.plot_data()
 
 
 
@@ -1724,28 +1678,6 @@ def save_all_frames_figure( data, flow, raw_detections, pattern_presence, frames
     plt.tight_layout()
     plt.savefig(filename, bbox_inches="tight")
     plt.show()
-
-
-#save_all_frames_figure( data=dff1, flow=data.velocities, raw_detections=raw_detections, pattern_presence=frame_labels_L, ncols=8, filename="all_frames_R.svg")
-
-#plot_pattern_raster(frame_labels_R+frame_labels_L, fs=12.5)
-
-
-
-
-frame_labels_example = np.array([
-[0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,1,0,1,1,1,0,1,1,0,0,1,0,0,1,1,0,1,0,0,0,0,0,0,0],
-[0,0,2,3,1,2,1,1,0,2,0,0,2,1,1,2,3,0,0,0,0,0,0,0,0,0,3,0,0,4,0,1,2,0,0,1,0,1,1,3,5],
-[0,3,0,0,1,0,1,3,0,0,1,2,1,1,1,0,1,0,0,1,0,0,0,0,0,0,0,1,2,0,0,0,0,1,1,1,3,2,2,2,1],
-[0,0,0,0,2,1,1,2,1,0,0,1,1,3,3,1,1,0,0,1,0,0,0,0,0,0,4,3,1,1,0,1,0,1,2,1,0,2,4,3,2],
-[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-])
-
-
-
-#animate_waves(data.dff,data.velocities, raw_detections, frame_labels_R, interval=250)
-
-
 
 
 
@@ -1913,7 +1845,7 @@ def plot_both_hemispheres_frames_and_raster(
 
 frames = [2, 16, 21, 27, 41, 47, 54, 68]
 
-brain_mask_full = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask_64.npy')
+brain_mask_full = np.load('brain_mask_64.npy')
 brain_mask_left = np.flipud(brain_mask_full[:, :32])
 brain_mask_right = np.flipud(brain_mask_full[:, 32:])
 
