@@ -819,7 +819,7 @@ class Display:
             ax.set_xlim(0, self.dff.shape[1])
             ax.axis("off")
 
-            flattened_values = data.waveness[:, :, 3][self.mask == 1]  ### for Retina
+            flattened_values = data.waveness[:, :, 3][self.mask == 1]
             flattened_values = flattened_values.flatten()
 
             ax2.hist(flattened_values, bins=20, range=(0, 1), color='tomato', alpha=0.8, rwidth=0.9,
