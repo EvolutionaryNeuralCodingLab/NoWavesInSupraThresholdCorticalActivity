@@ -98,8 +98,8 @@ class FlowAnalyze:
             self.space_and_time[:, :, i, 1] = flow[:, :, 0]
             self.space_and_time[:, :, i, 2] = flow[:, :, 1]
 
-            self.phase_space[:, :, i, 0] = flow[:, :, 0]  # * self.dff[:, :, i]
-            self.phase_space[:, :, i, 1] = flow[:, :, 1]  # * self.dff[:, :, i]
+            self.phase_space[:, :, i, 0] = flow[:, :, 0]  * self.dff[:, :, i]
+            self.phase_space[:, :, i, 1] = flow[:, :, 1]  * self.dff[:, :, i]
 
             all_convergence.append(convergence)
         self.converge = all_convergence
