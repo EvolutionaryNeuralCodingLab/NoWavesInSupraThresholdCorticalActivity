@@ -1739,8 +1739,10 @@ def plot_both_hemispheres_frames_and_raster(
         draw_detections(ax, raw_detections_right[frame], x_offset=W)
 
         title = f""
-        if pattern_total[0, frame] > 0:
+
+        if pattern_total[0, frame] == 2:
             title += "Plane"
+
         if pattern_total[4, frame] > 0:
             title += "Standing"
 
