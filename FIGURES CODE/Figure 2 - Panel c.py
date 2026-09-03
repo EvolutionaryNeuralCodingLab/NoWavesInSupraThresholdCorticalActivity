@@ -671,7 +671,7 @@ class Display:
 
 
         if data_type == 'cortex':
-            brain_mask = np.load('/brain_mask.npy')
+            brain_mask = np.load('brain_mask.npy')
             outer_line_rgb = np.load('outer_line_rgb.npy')
 
             ax.imshow(outer_line_rgb)
