@@ -158,6 +158,16 @@ class FlowAnalyze:
             plt.tight_layout()
             plt.show()
 
+        #means = np.mean(np.array(all_convergence), axis=0)
+        #plt.figure(figsize=(8, 5))
+        #plt.plot(means, linewidth=2)
+        #plt.xlabel("Iteration")
+        #plt.ylabel("Mean flow update (L2 norm)")
+        #plt.title("Horn–Schunck Convergence")
+        #plt.grid(True, alpha=0.3)
+        #plt.xlim([0,150])
+        #plt.tight_layout()
+        #plt.show()
 
     def calculate_waveness(self, type):
 
@@ -796,7 +806,7 @@ class Display:
 
         if data_type == 'cortex':
             brain_mask = np.load('brain_mask.npy')
-            outer_line_rgb = np.load(outer_line_rgb.npy')
+            outer_line_rgb = np.load('outer_line_rgb.npy')
 
             ax.imshow(outer_line_rgb)
             ax3.imshow(outer_line_rgb)
