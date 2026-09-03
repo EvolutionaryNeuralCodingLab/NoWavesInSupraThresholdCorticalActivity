@@ -6,9 +6,9 @@ import matplotlib.colors as mcolors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.patches import Rectangle
 
-# =============================================================================
-# 1. PARAMETERS
-# =============================================================================
+
+### PARAMETERS
+
 Nx, Nt = 201, 201
 x = np.linspace(-10, 10, Nx)
 t = np.linspace(-10, 10, Nt)
@@ -19,9 +19,8 @@ sigma_x1, sigma_x2 = 1.15, 1
 sigma_t1, sigma_t2 = 0.9, 0.9
 
 
-# =============================================================================
-# 2. MANIFOLD GENERATION & HILBERT TRANSFORM
-# =============================================================================
+### HILBERT TRANSFORM
+
 A1 = np.exp(-(X - x0)**2 / (2 * sigma_x1**2))
 g1 = np.exp(-(T - t0)**2 / (2 * sigma_t1**2))
 V1 = A1 * g1
@@ -34,17 +33,15 @@ V = V1 + V2
 V_hilbert = hilbert(V, axis=1).imag
 phi = np.arctan2(V_hilbert, V)
 
-# =============================================================================
-# 3. NUMERICAL & ANALYTICAL DERIVATIVES
-# =============================================================================
+
+### NUMERICAL & ANALYTICAL DERIVATIVES
+
 dx = x[1] - x[0]
 
-# --- Numerical Path ---
 phi_unwrapped_x = np.unwrap(phi, axis=0)
 phi_x_numerical = np.gradient(phi_unwrapped_x, dx, axis=0)
 
-# --- Analytical Path (Your Formula) ---
-# 1. Compute 1D temporal hilbert transforms along the true time vectors
+## Compute 1D temporal hilbert transforms along the true time vectors
 H_g1_1D = hilbert(g1[0, :]).imag
 H_g2_1D = hilbert(g2[0, :]).imag
 
@@ -61,9 +58,9 @@ overlap_numerator = spatial_bracket * (A1 * A2) * temporal_bracket
 # Adding a minor regularizer (1e-15) prevents true division-by-zero crashes at dead pixels
 phi_x_analytical = overlap_numerator / (V**2 + V_hilbert**2 + 1e-15)
 
-# =============================================================================
-# 4. THEORETICAL PREDICTION (Zero-Crossing Axis)
-# =============================================================================
+
+### Zero-Crossing Axis
+
 if sigma_x1 != sigma_x2:
     x_zero_theoretical = x0 * (sigma_x1**2 + sigma_x2**2) / (sigma_x2**2 - sigma_x1**2)
 else:
@@ -72,9 +69,7 @@ else:
 t_idx = Nt // 2
 
 
-# =============================================================================
-# 5. VISUALIZATION
-# =============================================================================
+### VISUALIZATION
 
 figsize_cm = (18, 18)
 figsize_in = tuple(x / 2.54 for x in figsize_cm)
@@ -137,13 +132,9 @@ cbar=add_matching_colorbar(fig, axs[0, 0], imA)
 cbar.set_ticks([0, 1])
 
 
-# --- NEW: Draw the parameter configuration legend on Plot A ---
-# Uses axes fractional coordinates (transform=axs[0,0].transAxes) so it sits safely in the top-left corner
-#axs[0, 0].text(0.04, 0.96, param_text, transform=axs[0, 0].transAxes,
-#               fontsize=11, verticalalignment='top', horizontalalignment='left',
-#               bbox=dict(boxstyle='round,pad=0.5', facecolor='white', alpha=0.85, edgecolor='gray'))
 
-# Plot B: Raw Instantaneous Phase
+
+### Instantaneous Phase
 imB = axs[0, 1].imshow(phi.T, extent=plot_extent, origin='lower', aspect='auto', cmap=phase_cmap,    vmin=-np.pi,vmax=np.pi)
 #axs[0, 1].set_title(r'Phase $\phi(x,t)$',fontsize=10)
 axs[0, 1].set_xlabel('Space [AU]')
@@ -152,14 +143,13 @@ cbar = add_matching_colorbar(fig, axs[0, 1], imB)
 cbar.set_ticks([-np.pi, 0, np.pi])
 cbar.set_ticklabels([r"$-\pi$", "0", r"$\pi$"])
 
-# Plot C: Analytical Phase Gradient Map (Your Formula)
+### Analytical Phase Gradient Map
 imC = axs[1, 0].imshow(phi_x_analytical.T, extent=plot_extent, origin='lower', aspect='auto', cmap='BrBG', vmin=-np.pi/2, vmax=np.pi/2)
 
 # Add the horizontal indicator line for the cross-section slice
 axs[1, 0].axhline(chosen_t, color='crimson', linestyle='--', lw=1.5,label=f'Cross-Section')
 
-#if x_zero_theoretical and x[0] < x_zero_theoretical < x[-1]:
-#    axs[1, 0].axvline(x_zero_theoretical, color='black', linestyle='--', label=f'Theoretical Zero Node ({x_zero_theoretical:.2f})')
+
 
 axs[1, 0].legend(loc='upper right',fontsize=8)
 #axs[1, 0].set_title(r'Analytical Phase Gradient $\frac{\partial \phi}{\partial x}$',fontsize=10)
@@ -187,9 +177,8 @@ ylim_bounds =[-3,3]# [-t0 - 2 * max(sigma_t1, sigma_t2), t0 + 2 * max(sigma_t1, 
 
 
 
-# =============================================================================
-# Plot E-F: Phase latency comparison
-# =============================================================================
+
+### Phase latency comparison
 
 def phase_latency_1d(phi, amp, t, phi0=0, amp_frac=0.01):
     """
@@ -289,9 +278,9 @@ cbar=add_matching_colorbar(fig, axs[2, 0], imF)
 cbar.set_ticks([0, 1])
 
 
-# -----------------------------
-# Rise -> constant-amplitude propagation -> decay at end
-# -----------------------------
+
+### Rise -> constant-amplitude propagation -> decay at end
+
 sigma_wave = 0.8
 
 v = 0.4
