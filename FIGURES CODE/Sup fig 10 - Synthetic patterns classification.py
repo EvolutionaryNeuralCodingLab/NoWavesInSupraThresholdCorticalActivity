@@ -4,6 +4,7 @@ import matplotlib
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
+from matplotlib.lines import Line2D
 
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
@@ -25,7 +26,6 @@ n = 3  ## neighborhood size (2n+1)x(2n+1) around each pixel
 lim = 0.5  ## Threshold of Wavness values for final score
 beta = 0.035
 
-theta = 15  ## Theta threshold for uniform continuity
 
 plt.rcParams['font.family'] = 'Arial'
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -46,63 +46,6 @@ class PreDataProcessing:
         self.N = resized_dff.shape[0]
         self.M = resized_dff.shape[1]
 
-    def filter(self, fil, sigma, kernel):
-        ## filter = 'gaussian' , 'bilateral' , 'average' , 'normalize'
-        filtered_dff = np.zeros((self.dff.shape[0], self.dff.shape[1], self.dff.shape[2]))
-        for i in range(self.dff.shape[2]):
-            filtered_dff[:, :, i] = Filter(self.dff[:, :, i], fil=str(fil), sigma=sigma, kernel=kernel)
-        self.dff = filtered_dff
-
-    def add_noise(self, std):
-        for t in range(self.frames):
-            self.dff[:, :, t] += np.random.normal(0, std, size=(self.N, self.M))
-
-    def add_noise_temporal(self, std):
-        for i in range(self.N):
-            for j in range(self.M):
-                self.dff[i, j, :] += np.random.normal(0, std, size=self.frames)
-
-    def delta_f_over_f(self, T1, T2):
-        """
-        Compute ΔF/F for a video with a floating minimum baseline.
-
-        Parameters:
-        - video: 3D numpy array of shape (N, M, frames) representing the video.
-        - T1: Integer representing the size of the sliding window for the average filter.
-        - T2: Integer representing the size of the sliding window for the minimum filter among the averages.
-
-        Returns:
-        - delta_f_over_f_video: 3D numpy array of the same shape as the input video, containing the ΔF/F values.
-
-        Based on 'In vivo two-photon imaging of sensory-evoked dendritic calcium signal in cortal neurons" - Arthur Konnerth
-        """
-
-        delta_f_over_f_video = np.zeros_like(self.dff, dtype=np.float64)
-
-        # Iterate over each pixel position
-        for i in range(self.dff.shape[0]):
-            for j in range(self.dff.shape[1]):
-                window = np.ones(T1) / T1
-
-                # Apply convolution to compute the rolling average
-                floating_avg = np.convolve(self.dff[i, j, :], window, mode='same')
-
-                # Compute the floating minimum using a minimum filter
-                baseline_f = minimum_filter(floating_avg, size=T2)
-
-                delta_f = self.dff[i, j, :] - baseline_f
-
-                delta_f_over_f = delta_f / baseline_f
-
-                # Explicitly set ΔF/F to zero where baseline was zero
-                zero_mask = (baseline_f == 0)
-                delta_f_over_f[zero_mask] = 0  # Set ΔF/F to zero where baseline is zero
-
-                # Store the result in the output array
-                delta_f_over_f_video[i, j, :] = delta_f_over_f
-
-        self.dff = delta_f_over_f_video
-
 class FlowAnalyze:
     def __init__(self, data):
         self.dff = data.dff
@@ -111,7 +54,6 @@ class FlowAnalyze:
         self.frames = data.dff.shape[2]
 
         self.n = n
-        self.theta = theta
         self.iter = iterations
 
         self.flows = []
@@ -233,7 +175,6 @@ class Display:
         self.color_map = LinearSegmentedColormap.from_list("AbyssBlue", list(zip(positions, colors)))
 
         self.n = n
-        self.theta = theta
         self.alpha = alpha
         self.beta = beta
         self.iter = iterations
@@ -251,9 +192,9 @@ class Display:
         fig, ax = plt.subplots()
         # title = "test"
         # self.title="sda"
-        brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask_64.npy')
+        brain_mask = np.load('brain_mask_64.npy')
         brain_mask = brain_mask[:, :]
-        outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb_64.npy')
+        outer_line_rgb = np.load('outer_line_rgb_64.npy')
 
         def phase_cmap():
             smooth_cycle = mcolors.LinearSegmentedColormap.from_list(
@@ -332,28 +273,8 @@ class Display:
         # cbar.set_ticks([0, 1])
         # cbar.set_ticklabels(['0', '1'])
 
-        #plt.figure(figsize=(2.5, 2.5))  # bigger figure in inches
-        #plt.imshow(data.dff[:, :64, 80]*1.2, self.color_map, vmin=0, vmax=1)  # keep pixelated look
-        #plt.axis('off')  # remove axes
-        #plt.savefig("Barrel Activation.png", dpi=300, bbox_inches='tight')
-        #plt.show()
-
-        #plt.close()
 
         ani.save(f"{self.N}x{self.M}x{self.frames} {self.title} .mp4", writer='ffmpeg', fps=12.5)
-
-       # frame = self.dff[:, :, 123]
-
-        # Create a figure with desired size
-        #fig, ax = plt.subplots(figsize=(8, 8))  # size in inches, adjust as needed
-        #ax.imshow(frame, cmap=self.color_map)
-        #ax.axis('off')  # remove axes
-
-        # Save with higher DPI
-        #fig.savefig("Tim_murphy_cortex.png", dpi=300, bbox_inches='tight', pad_inches=0)
-        #plt.close(fig)
-        #plt.imsave("Tim_murphy_cortex.png", frame, cmap=self.color_map, dpi=300)
-
         plt.show()
 
     def full_analysis_3columns(self, space, scale, data_type):
@@ -366,7 +287,7 @@ class Display:
         for axis in [ax, ax3]:
             axis.set_aspect('equal')
 
-        outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+        outer_line_rgb = np.load('outer_line_rgb.npy')
 
         outer_line_rgba = np.ones((*outer_line_rgb.shape[:2], 4))  # Start with white and alpha = 1
 
@@ -380,9 +301,8 @@ class Display:
         self.sum_phase_space[self.sum_phase_space[:, :, -1, 1] == 0] = np.nan
 
         if data_type == 'cortex':
-            brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
-            outer_line_rgb = np.load(
-                '/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+            brain_mask = np.load('brain_mask.npy')
+            outer_line_rgb = np.load('outer_line_rgb.npy')
 
             ax.imshow(outer_line_rgb)
             ax3.imshow(outer_line_rgb)
@@ -463,10 +383,6 @@ class Display:
         ax3.imshow(data.waveness[:, :, 0], cmap=cmap, vmin=-np.pi, vmax=np.pi, alpha=data.waveness[:, :, 3])
 
 
-
-        #data.waveness[:, :, 3] = np.where(data.waveness[:, :, 3] < lim, 0, data.waveness[:, :, 3])
-
-
         ax3.axis("off")
         cmap = plt.cm.hsv
 
@@ -482,7 +398,6 @@ class Display:
 
         #plt.tight_layout()
         plt.savefig(f'{self.N}x{self.M}x{self.frames} {self.title}.pdf' ,dpi = 400)
-        # plt.savefig('Retina2.pdf')
         #plt.show()
 
 
@@ -575,7 +490,6 @@ def phase_cmap():
     )
 
     return smooth_cycle
-
 
 
 def classify_jacobian_patterns(flow,plane_threshold=0.8,min_radius=4,min_duration=2,Nv=8,alpha=3.6,beta=0.3):
@@ -707,8 +621,6 @@ def classify_jacobian_patterns(flow,plane_threshold=0.8,min_radius=4,min_duratio
             if v_avg > 1e-5:
                 sum_vec = np.array([np.sum(u_m), np.sum(v_m)])
                 R = np.linalg.norm(sum_vec) / (mags.size * v_avg)
-                print(R)
-                # print(v_avg, np.round(R,4))
 
                 if R >= plane_threshold:
                     pattern_presence[0, t] = 1
@@ -795,11 +707,6 @@ def classify_jacobian_patterns(flow,plane_threshold=0.8,min_radius=4,min_duratio
                         ptype = "Sink"
                 else:
                     continue
-
-                    # ------------------------------------------------
-                    # Angular criteria: only for Source/Sink
-                    # ------------------------------------------------
-
 
 
                 if ptype == "Saddle":
@@ -916,18 +823,16 @@ def classify_jacobian_patterns(flow,plane_threshold=0.8,min_radius=4,min_duratio
                     'type': track['type'],
                     'pos': track['last_pos']})
 
-    # print(filtered_raw_detections)
     np.set_printoptions(threshold=np.inf)
-    print(pattern_presence)
 
     return pattern_presence, filtered_raw_detections
 
 
-brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask_64.npy')
+brain_mask = np.load('brain_mask_64.npy')
 brain_mask = brain_mask[:, :32]
 brain_mask = np.flipud(brain_mask)
 
-outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb_64.npy')
+outer_line_rgb = np.load('outer_line_rgb_64.npy')
 outer_line_rgb = outer_line_rgb[:, :32]
 
 
@@ -939,17 +844,26 @@ color_map = color_map  # or your preferred colormap
 
 figsize_cm = (18, 15)
 figsize_in = tuple(x / 2.54 for x in figsize_cm)
-fig, axes = plt.subplots(4, 10, figsize=figsize_in,gridspec_kw={'width_ratios': [1,1,1,1,1.8,1,1,1,1,1.8]})  # 4 rows × 9 columns
+fig, axes = plt.subplots(
+    4, 12,
+    figsize=figsize_in,
+    gridspec_kw={
+        'width_ratios': [
+            1, 1, 1, 1, 1, 3,
+            1, 1, 1, 1, 1, 3
+        ]
+    }
+)
+
+plt.subplots_adjust(wspace=0.05, hspace=0.4)
 
 for row_idx, dtype in enumerate(data_types):
-    #Get data and preprocess
     dff1, title = data_type(type=dtype)
     data = PreDataProcessing(dff1)
     data = FlowAnalyze(data)
     analytic_signal = hilbert(data.dff, axis=-1)#
     phase = np.angle(analytic_signal)  # shape (N, M, T)
     dff1 = data.dff
-
 
     data.horn_schunck_flow(alpha=alpha, num_iter=iterations, phase=False)
     frame_labels, raw_detections = classify_jacobian_patterns(data.velocities)
@@ -981,9 +895,7 @@ for row_idx, dtype in enumerate(data_types):
                 xs.append(x)
                 ys.append(y)
                 colors.append(pattern_colors[ptype])
-                ax.text(x + 2, y + 2, ptype, color=pattern_colors[ptype],
-                        fontsize=7, weight='bold', ha='left', va='bottom',
-                        bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1))
+
         if len(xs) > 0:
             ax.scatter(xs, ys, s=25, edgecolor='white', linewidth=0.5, c=colors)
         ax.set_xticks([]);
@@ -992,17 +904,19 @@ for row_idx, dtype in enumerate(data_types):
         ax.set_ylim(data.dff.shape[0],0)
 
     # Last column: raster plot
-    ax = axes[row_idx, 4]
-    pattern_names =["", "", "", "", ""] #["Plane wave", "Source", "Sink", "Saddle", "Standing Wave"]
+    ax = axes[row_idx, 5]
+    pattern_names = ["Plane", "Source", "Sink", "Saddle", "Standing"]
     T = frame_labels.shape[1]
     time = np.arange(T) / 13
     im = ax.imshow(frame_labels, aspect='auto', origin='lower', extent=[0, time[-1], -0.5, 4.5], cmap=color_map,interpolation='nearest')
     ax.set_yticks(range(5))
     ax.set_yticklabels(pattern_names)
-    ax.set_xlabel("Time (s)")
-    ax.set_title(f"{dtype} raster")
-    ax.set_xlim([0,2.8])
+    ax.set_xlim([0,2.5384])
 
+    if row_idx == len(data_types) - 1:
+        ax.set_xlabel("Time [sec]")
+    else:
+        ax.set_xlabel("")
 
     dff1, title = data_type(type=dtype)
     data = PreDataProcessing(dff1)
@@ -1034,7 +948,7 @@ for row_idx, dtype in enumerate(data_types):
     display.title = f'{dtype} phase'
 
     #Phase
-    for col_idx, frame in enumerate(snap_frames, start=5):
+    for col_idx, frame in enumerate(snap_frames, start=6):
         ax = axes[row_idx, col_idx]
         frame_data = data.dff[:, :, frame]
         def phase_cmap():
@@ -1058,11 +972,8 @@ for row_idx, dtype in enumerate(data_types):
             return smooth_cycle
 
 
-        print('sdasdasda\nsd ',data.mask)
         mask2d = brain_mask.squeeze().astype(bool)
-
         masked_phase = np.ma.masked_where(~phase_analysis_mask,phase[:, :, frame])
-
         ax.imshow(masked_phase,cmap=phase_cmap(),vmin=-np.pi,vmax=np.pi)
 
 
@@ -1070,11 +981,9 @@ for row_idx, dtype in enumerate(data_types):
 
 
         overlay = outer_line_rgb[::-1].astype(np.float32)
-        #ax.imshow(overlay, alpha=(overlay > 0).astype(np.float32),cmap='Greys')
 
-        # Quiver
+
         flow_frame = data.velocities[:, :, frame, :]
-
         flow_frame[brain_mask == 0] = 0
         plot_quiver(ax, flow_frame, spacing=4, scale=0.2, color='black', width=0.006)
 
@@ -1091,9 +1000,7 @@ for row_idx, dtype in enumerate(data_types):
                 xs.append(x)
                 ys.append(y)
                 colors.append(pattern_colors[ptype])
-                ax.text(x + 2, y + 2, ptype, color=pattern_colors[ptype],
-                        fontsize=7, weight='bold', ha='left', va='bottom',
-                        bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1))
+
         if len(xs) > 0:
             ax.scatter(xs, ys, s=25, edgecolor='white', linewidth=0.5, c=colors)
         ax.set_xticks([]);
@@ -1102,16 +1009,63 @@ for row_idx, dtype in enumerate(data_types):
         ax.set_ylim(data.dff.shape[0],0)
 
     # Last column: raster plot
-    ax = axes[row_idx, 9]
-    pattern_names =["", "", "", "", ""] #["Plane wave", "Source", "Sink", "Saddle", "Standing Wave"]
+    ax = axes[row_idx, 11]
+    pattern_names = ["Plane", "Source", "Sink", "Saddle", "Standing"]
     T = frame_labels.shape[1]
     time = np.arange(T) / 13
     im = ax.imshow(frame_labels, aspect='auto', origin='lower', extent=[0, time[-1], -0.5, 4.5], cmap=color_map,interpolation='nearest')
     ax.set_yticks(range(5))
     ax.set_yticklabels(pattern_names)
-    ax.set_xlabel("Time (s)")
-    ax.set_title(f"{dtype} raster")
-    ax.set_xlim([0,2.8])
+    ax.set_xlim([0,2.5384])
+    axes[row_idx, 4].axis("off")
+    axes[row_idx, 10].axis("off")
+
+    if row_idx == len(data_types) - 1:
+        ax.set_xlabel("Time [sec]")
+    else:
+        ax.set_xlabel("")
+
+
+legend_handles = [
+
+    Line2D([0], [0],
+        marker='o',
+        linestyle='None',
+        markerfacecolor='tomato',
+        markeredgecolor='white',
+        markersize=6,
+        label='Source'
+    ),
+
+    Line2D([0], [0],
+        marker='o',
+        linestyle='None',
+        markerfacecolor='royalblue',
+        markeredgecolor='white',
+        markersize=6,
+        label='Sink'
+    ),
+
+    Line2D([0], [0],
+        marker='o',
+        linestyle='None',
+        markerfacecolor='mediumseagreen',
+        markeredgecolor='white',
+        markersize=6,
+        label='Saddle'
+    )
+]
+
+fig.legend(
+    handles=legend_handles,
+    loc='upper left',
+    bbox_to_anchor=(0.02, 0.92),
+    frameon=False,
+    fontsize=7,
+    ncol=3,
+    columnspacing=1.2,
+    handletextpad=0.4
+)
 
 plt.tight_layout()
 plt.subplots_adjust(wspace=0.6, hspace=0.4)
