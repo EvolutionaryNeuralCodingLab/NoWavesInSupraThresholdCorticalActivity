@@ -39,51 +39,6 @@ class PreDataProcessing:
         self.N = resized_dff.shape[0]
         self.M = resized_dff.shape[1]
 
-    def filter(self, fil, sigma, kernel):
-
-        filtered_dff = np.zeros((self.dff.shape[0], self.dff.shape[1], self.dff.shape[2]))
-        for i in range(self.dff.shape[2]):
-            filtered_dff[:, :, i] = Filter(self.dff[:, :, i], fil=str(fil), sigma=sigma, kernel=kernel)
-        self.dff = filtered_dff
-
-    def add_noise(self, std):
-        self.dff += np.random.normal(0, std, self.dff.shape)
-
-    def delta_f_over_f(self, T1, T2):
-        """
-        Compute ΔF/F for a video with a floating minimum baseline.
-
-        Parameters:
-        - video: 3D numpy array of shape (N, M, frames) representing the video.
-        - T1: Integer representing the size of the sliding window for the average filter.
-        - T2: Integer representing the size of the sliding window for the minimum filter among the averages.
-
-        Returns:
-        - delta_f_over_f_video: 3D numpy array of the same shape as the input video, containing the ΔF/F values.
-
-        Based on 'In vivo two-photon imaging of sensory-evoked dendritic calcium signal in cortal neurons" - Arthur Konnerth
-        """
-
-        delta_f_over_f_video = np.zeros_like(self.dff, dtype=np.float64)
-
-        for i in range(self.dff.shape[0]):
-            for j in range(self.dff.shape[1]):
-                window = np.ones(T1) / T1
-
-                floating_avg = np.convolve(self.dff[i, j, :], window, mode='same')
-
-                baseline_f = minimum_filter(floating_avg, size=T2)
-
-                delta_f = self.dff[i, j, :] - baseline_f
-
-                delta_f_over_f = delta_f / baseline_f
-
-                zero_mask = (baseline_f == 0)
-                delta_f_over_f[zero_mask] = 0
-
-                delta_f_over_f_video[i, j, :] = delta_f_over_f
-
-        self.dff = delta_f_over_f_video
 
 class FlowAnalyze:
     def __init__(self, data):
@@ -155,7 +110,7 @@ class FlowAnalyze:
         down = np.linalg.norm(self.abs_sum_phase_space[..., -1, :], axis=-1)
         ratios = np.divide(up, down, where=down != 0, out=np.zeros_like(up))
 
-        brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
+        brain_mask = np.load('brain_mask.npy')
         if self.dff.shape[1] == 64:
             brain_mask = brain_mask[:, :64]
 
@@ -572,14 +527,14 @@ class Display:
         first_half = frame_indices[:len(frame_indices) // 2]
         second_half = frame_indices[len(frame_indices) // 2:]
 
-        outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+        outer_line_rgb = np.load('outer_line_rgb.npy')
         outer_line_rgba = np.ones((*outer_line_rgb.shape[:2], 4))
         line_mask = np.all(outer_line_rgb < 1.0, axis=2)
         outer_line_rgba[..., :3][line_mask] = 0.392
         outer_line_rgba[..., 3] = 0.0
         outer_line_rgba[..., 3][line_mask] = 1.0
 
-        brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
+        brain_mask = np.load('brain_mask.npy')
         brain_mask_bool = brain_mask.astype(bool)
         eroded_mask = binary_erosion(brain_mask_bool, iterations=1)
         brain_mask = eroded_mask.astype(np.uint8)[:,64:]
@@ -666,9 +621,9 @@ class Display:
         cmap.set_bad(color="white")
 
         fig, ax = plt.subplots()
-        brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')[:,:64]
+        brain_mask = np.load('brain_mask.npy')[:,:64]
 
-        outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+        outer_line_rgb = np.load('outer_line_rgb.npy')
         outer_line_rgb = outer_line_rgb[:, :]
         outer_line_rgba = np.ones((*outer_line_rgb.shape[:2], 4))
         line_mask = np.all(outer_line_rgb < 1.0, axis=2)
@@ -705,7 +660,7 @@ class Display:
         for axis in [ax, ax3]:
             axis.set_aspect('equal')
 
-        outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+        outer_line_rgb = np.load('outer_line_rgb.npy')
 
         outer_line_rgba = np.ones((*outer_line_rgb.shape[:2], 4))
 
@@ -716,9 +671,8 @@ class Display:
 
 
         if data_type == 'cortex':
-            brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
-            outer_line_rgb = np.load(
-                '/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+            brain_mask = np.load('/brain_mask.npy')
+            outer_line_rgb = np.load('outer_line_rgb.npy')
 
             ax.imshow(outer_line_rgb)
             ax3.imshow(outer_line_rgb)
@@ -790,7 +744,7 @@ class Display:
 
         plt.show()
 
-brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
+brain_mask = np.load('brain_mask.npy')
 
 
 dff1 = np.load("Fig 2 Example.npy")  ## data of shape NxMxT
