@@ -14,8 +14,16 @@ from Algos.Create_Patterns import create_patterns, create_gaussians, create_gaus
 
 def data_type(type):
     if type == '2 gaussian':
-        dff1, params = create_gaussians(N=64, M=128, frames=65, num_gaus=2, x0=32, y0=70 - 16, sd0=16, t0_0=14 + 16,sdT0=9, x1=32, y1=70 + 16, sd1=16, t0_1=14, sdT1=9)
+        dff1 , params = create_gaussians(N=64, M=128, frames=50, num_gaus=2, x0=30, y0=90, sd0=17, t0_0=16, sdT0=7, x1=30, y1=90-32,sd1=17, t0_1=16+12 ,sdT1=7)
+
         title = r'2 Gaussians'
+        # Parameters for soft easing
+        threshold = 0.25
+        steepness = 20  # Higher = sharper transition, like a soft cutoff
+
+        mask = 1 / (1 + np.exp(-steepness * (dff1 - threshold)))        # Sigmoid-based soft mask
+        dff1 = dff1 * mask
+
 
         return dff1, title
 
