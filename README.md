@@ -45,15 +45,23 @@ The script imports several project-specific modules:
 
 ```text
 project_root/
-├── analysis.py
-├── Algos/
+├── Waviness Analysis.py          # Main analysis pipeline
+│
+├── Algos/                        # Core reusable analysis algorithms
 │   ├── __init__.py
 │   ├── Data_Processing.py
 │   ├── Create_Patterns.py
 │   ├── Display.py
 │   └── Horn_Schunck.py
+│
+├── Figures/                      # Code used to generate manuscript figures
+│   ├── ...
+│   └── ...                       # May import functions/classes from Algos/
+│
 ├── brain_mask.npy
-└── outer_line_rgb.npy
+├── brain_mask_64.npy
+├── outer_line_rgb.npy
+└── outer_line_rgb_64.npy
 ```
 
 The following functions must be available:
