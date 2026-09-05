@@ -164,7 +164,7 @@ class FlowAnalyze:
         # neighborhood_size = ((2 * self.n + 1) ** 2 - 4 * (2 * self.n))   ## First order
         neighborhood_size = (2 * self.n + 1) ** 2 - (4 * 2 * self.n) - (4 * (2 * n - 2))  ## Second order
 
-        brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
+        brain_mask = np.load('brain_mask.npy')
         if self.dff.shape[1] == 64:
             brain_mask = brain_mask[:, :64]
 
@@ -834,11 +834,9 @@ class Display:
         cmap.set_bad(color="white")
 
         fig, ax = plt.subplots()
-        # title = "test"
-        # self.title="sda"
-        brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')[:,:64]
-        # brain_mask = brain_mask[:, :64]
-        outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+        
+        brain_mask = np.load('brain_mask.npy')[:,:64]
+        outer_line_rgb = np.load('outer_line_rgb.npy')
         outer_line_rgb = outer_line_rgb[:, :]
         outer_line_rgba = np.ones((*outer_line_rgb.shape[:2], 4))  # Start with white and alpha = 1
         line_mask = np.all(outer_line_rgb < 1.0, axis=2)  # Where the line is (i.e., not white)
@@ -924,7 +922,7 @@ class Display:
         for axis in [ax, ax3]:
             axis.set_aspect('equal')
 
-        outer_line_rgb = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+        outer_line_rgb = np.load('outer_line_rgb.npy')
 
         outer_line_rgba = np.ones((*outer_line_rgb.shape[:2], 4))  # Start with white and alpha = 1
 
@@ -941,9 +939,8 @@ class Display:
 
 
         if data_type == 'cortex':
-            brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
-            outer_line_rgb = np.load(
-                '/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+            brain_mask = np.load('brain_mask.npy')
+            outer_line_rgb = np.load('outer_line_rgb.npy')
 
             ax.imshow(outer_line_rgb)
             ax3.imshow(outer_line_rgb)
@@ -1060,7 +1057,7 @@ def compare_basic_patterns_noise(noise, N=128, M=64, frames=65, x0=32, y0=70 - 1
 
         return ratio
 
-    brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
+    brain_mask = np.load('brain_mask.npy')
     brain_mask = brain_mask[:, :64]
 
     binary_mask = (brain_mask == 1)  # or 1, depending on your actual mask
