@@ -5,6 +5,7 @@ from PIL import Image
 from scipy.signal import butter, lfilter
 from scipy.signal import hilbert
 from scipy.signal import butter, filtfilt
+import os
 import matplotlib
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import Normalize
@@ -30,7 +31,7 @@ from Algos.Horn_Schunck import horn_schunck , horn_schunck_phase
 
 #### Algorithm parameters###
 alpha = 0.3   ## Optic Flow Horn-Schunck alpha parameter
-iterations = 2  ## Number of iterations
+iterations = 150  ## Number of iterations
 n = 3  ## neighborhood size (2n+1)x(2n+1) around each pixel
 lim = 0.5  ## Threshold of Wavness values for final score
 beta = 0.035
@@ -38,45 +39,6 @@ beta = 0.035
 plt.rcParams['font.family'] = 'Arial'
 matplotlib.rcParams['pdf.fonttype'] = 42
 
-import os
-
-
-class MP4ToDff:
-    def __init__(self, mp4):
-        self.mp4 = mp4
-        self.avi = mp4
-        self.dff = np
-
-    def mp4_video_to_numpy_gray(self):
-        try:
-            # Open the MP4 video file
-            cap = cv2.VideoCapture(self.avi)
-            if not cap.isOpened():
-                raise RuntimeError(f"Cannot open video: {self.avi}")
-            # Get the video properties
-            num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-            # Create an empty array to store the grayscale video frames
-            video_array_gray = np.zeros((num_frames, height, width), dtype=np.uint8)
-
-            # Read each frame, convert to grayscale, and store it in the array
-            for i in range(num_frames):
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                video_array_gray[i] = frame_gray
-            # Release the video capture object
-            cap.release()
-
-            self.dff = np.transpose(video_array_gray, (1, 2, 0))
-            self.N = self.dff.shape[0]
-            self.M = self.dff.shape[1]
-
-        except Exception as e:
-            print(f"Error processing video: {e}")
 
 
 class PreDataProcessing:
@@ -150,7 +112,6 @@ class PreDataProcessing:
                 delta_f_over_f_video[i, j, :] = delta_f_over_f
 
         self.dff = delta_f_over_f_video
-
 
 class FlowAnalyze:
     def __init__(self, data):
@@ -233,16 +194,14 @@ class FlowAnalyze:
         ratios = np.divide(up, down, where=down != 0, out=np.zeros_like(up))
 
 
-        brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
+        brain_mask = np.load('brain_mask.npy')
         if self.dff.shape[1] == 64:
             brain_mask = brain_mask[:, :64]
 
         valid_mask = variance > (beta * 0.25)
 
 
-        if type == 'cortex':
-            # filtered_map = np.where(valid_mask & (brain_mask > 0), variance, 0)
-            filtered_map = np.where(valid_mask, variance, 0)
+        filtered_map = np.where(valid_mask, variance, 0)
 
         def find_max_min(data, sigma, prominence, lim_up, lim_down, height=None, distance=5):
             """
@@ -549,6 +508,7 @@ class FlowAnalyze:
             return score
 
 
+
         def process_data(frames, velocities, search_map, rect_size=(34, 4)):
             """
             Process a video sequence, summing gradients within directional rectangles.
@@ -595,12 +555,18 @@ class FlowAnalyze:
                         continue
 
                     direction = velocity_map[y, x, :]  # Safe access
-                    wave_front_map[y, x] = analyze_gradients_in_rectangle(frame, gradient_map, x, y, direction,
-                                                                          rect_size, t, velocities, lim_up, lim_down)
+                    if type =='vsd':
+                        wave_front_map[y, x] = analyze_gradients_in_rectangle(frame, gradient_map, x, y, direction,rect_size, t, velocities, lim_up, lim_down,sigma=0.5)
+
+                    else:
+                        wave_front_map[y, x] = analyze_gradients_in_rectangle(frame, gradient_map, x, y, direction,rect_size, t, velocities, lim_up, lim_down)
 
             return wave_front_map
+        if type =='vsd':
+            wave_front_map = process_data(self.dff, self.velocities, filtered_map, rect_size=(22,3))
 
-        #wave_front_map = process_data(self.dff, self.velocities, filtered_map)
+        else:
+            wave_front_map = process_data(self.dff, self.velocities, filtered_map)
 
         for h in range(0, self.N):
             for j in range(0, self.M):
@@ -659,7 +625,7 @@ class FlowAnalyze:
                     self.waveness[h, j, 1] = color[1]
                     self.waveness[h, j, 2] = color[2]
 
-                    self.waveness[h, j, 3] = ratios[h, j] #* wave_front_map[h, j]  # * spatial_coherence
+                    self.waveness[h, j, 3] = ratios[h, j] * wave_front_map[h, j]  # * spatial_coherence
 
                     self.mask[h, j] = 1
 
@@ -671,23 +637,9 @@ class FlowAnalyze:
         self.Waveness = True
 
 
-
-def bandpass_filter_video(video, lowcut, highcut, fs, order=4):
-    nyquist = 0.5 * fs
-    low = lowcut / nyquist
-    high = highcut / nyquist
-    print(low, high)
-
-    b, a = butter(order, [low, high], btype='band')
-
-    # Apply filter along the last axis (time)
-    filtered = filtfilt(b, a, video, axis=-1)
-
-    return filtered
-
 def figure_plot_real_data(space, scale):
     """
-    Plot six real-data examples without area or duration histograms.
+    Plot six real-data examples.
 
     row5 and row6 must be dictionaries with:
         dff:          3-D NumPy array
@@ -701,9 +653,7 @@ def figure_plot_real_data(space, scale):
     figsize = tuple(np.array((18, 20.25)) / 2.54)
     fig, axes = plt.subplots(6, 5, figsize=figsize)
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
+
     def hide_axis(ax):
         ax.set_xticks([])
         ax.set_yticks([])
@@ -723,22 +673,6 @@ def figure_plot_real_data(space, scale):
     def ratio_over_lim(values, mask):
         denominator = np.count_nonzero(mask)
         return np.count_nonzero(values > lim) / denominator if denominator else 0
-
-    def extract_scores(dataset, fps=60, min_area=-0.1, offset=3700):
-        scores = []
-        for video_index, video in enumerate(dataset):
-            last_end = -1
-            for interval, values in sorted(dataset[video].items()):
-                start, end = np.asarray(interval) + offset * video_index
-                valid = (
-                    values['area'] > min_area
-                    and start >= last_end
-                    and (end - start) / fps < 20
-                )
-                if valid:
-                    scores.append(values['ratio'])
-                    last_end = end
-        return scores
 
     def cyclic_hsv_cmap(n=256, rotation=0.25):
         hue = (np.linspace(0, 1, n + 1) + rotation) % 1
@@ -803,30 +737,53 @@ def figure_plot_real_data(space, scale):
         ax.spines['left'].set_linewidth(1.6)
         ax.tick_params(axis='y', labelsize=8, width=1.5, length=6)
 
-    def analyze(dff, crop_half=False):
+    def analyze(dff,title, crop_half=False):
         processed = PreDataProcessing(dff)
-        processed.resize(128, 128)
 
         if crop_half:
             processed.dff = processed.dff[:, :64, :]
 
-        analyzed = FlowAnalyze(processed)
-        analyzed.horn_schunck_flow(
-            alpha=alpha,
-            num_iter=iterations,
-            phase=False,
-        )
-        analyzed.calculate_waveness(type='retina')
+        if title == 'Awake':
+            vsd_mask = np.load("Fig 4 - datasets/VSD_mask_awake.npy")
+            processed.dff[vsd_mask == 0, :] = 0
+            analyzed = FlowAnalyze(processed)
+            analyzed.horn_schunck_flow(alpha=alpha,num_iter=iterations,phase=False, )
+            analyzed.calculate_waveness(type='vsd')
+        elif title == 'Anesthetized':
+            vsd_mask = np.load("Fig 4 - datasets/VSD_mask_anes.npy")
+            processed.dff[vsd_mask == 0, :] = 0
+            analyzed = FlowAnalyze(processed)
+            analyzed.horn_schunck_flow(alpha=alpha,num_iter=iterations,phase=False, )
+            analyzed.calculate_waveness(type='vsd')
+        else:
+            analyzed = FlowAnalyze(processed)
+            analyzed.horn_schunck_flow(alpha=alpha,num_iter=iterations,phase=False, )
+            analyzed.calculate_waveness(type='cortex')
         return analyzed
 
-    def plot_row(row, dff, image_path, title, scores=None, crop_half=False, quiver_scale=None, score_plot='hist'):
+    def plot_row(row, dff, frame_idx, title, scores=None, crop_half=False, quiver_scale=None, score_plot='hist'):
+        colors = [
+            (1.0, 1.0, 1.0),  # white
+            (0.5, 0.7, 0.8),  # pale blue
+            (0.1, 0.2, 0.6),  # navy blue
+        ]
+        positions = [0.0, 0.5, 1]  # white at 0, pale blue at 0.2, navy at 0.5 (clipped early)
+        color_map = LinearSegmentedColormap.from_list("AbyssBlue", list(zip(positions, colors)))
+
+        brain_mask = np.load('brain_mask.npy')
+        if dff.shape[1] == 64:
+            brain_mask = brain_mask[:, :64]
+
         ax_image, ax_flow, ax_hist, ax_map, ax_score = axes[row]
 
-        # Reference image
-        ax_image.imshow(mpimg.imread(image_path))
+        if title =='Whisker stim right':
+            ax_image.imshow(dff[:,:64,frame_idx], cmap=color_map, vmin = 0, vmax=1)
+        else:
+            ax_image.imshow(dff[:,:,frame_idx], cmap=color_map, vmin = 0, vmax=1)
+
         ax_image.axis('off')
 
-        data = analyze(dff, crop_half=crop_half)
+        data = analyze(dff, title = title, crop_half=crop_half)
 
         # Momentum / flow field
         flow = data.sum_phase_space[:, :, -1, :]
@@ -834,59 +791,37 @@ def figure_plot_real_data(space, scale):
             flow = np.pad(flow, ((0, 0), (32, 32), (0, 0)))
 
         ax_flow.set_title(title)
-        plot_quiver(
-            ax_flow,
-            flow,
-            spacing=space,
-            scale=scale if quiver_scale is None else quiver_scale,
-            color='black',
-            width=0.005,
-        )
+
+        if title in ['Awake', 'Anesthetized']:
+            plot_quiver(ax_flow, flow, spacing=3, scale=scale if quiver_scale is None else quiver_scale,color='black', width=0.005)
+        else:
+            plot_quiver(ax_flow, flow, spacing=space, scale=scale if quiver_scale is None else quiver_scale, color='black',width=0.005)
         ax_flow.set_ylim(flow.shape[0], 0)
         ax_flow.set_aspect('equal', adjustable='box')
         hide_axis(ax_flow)
 
         # Pixel-level waviness histogram
-        values = data.waveness[:, :, 3][data.mask == 1].ravel()
-        ax_hist.hist(
-            values,
-            bins=10,
-            range=(0, 1),
-            color='#d6b8a8',
-            edgecolor='black',
-            linewidth=0.5,
-        )
+        values = data.waveness[:, :, 3][data.mask == 1].flatten()
+        ax_hist.hist(values, bins=10, range=(0, 1), color='#d6b8a8', edgecolor='black', linewidth=0.5)
         ax_hist.axvline(lim, color='dimgrey', linewidth=1, linestyle='--')
-        ax_hist.set(
-            xlim=(0, 1),
-            ylim=(0, len(values)),
-            yticks=[0, len(values)],
-            yticklabels=[0, 1],
-        )
+        ax_hist.set(xlim=(0, 1), ylim=(0, len(values)), yticks=[0, len(values)], yticklabels=[0, 1])
         clean_hist_axis(ax_hist)
         set_box_aspect_from_limits(ax_hist)
 
-        print(f'{title}: {ratio_over_lim(values, data.mask):.4f}')
+        values = data.waveness[:, :, 3].flatten()
+        ratio = np.count_nonzero(values > lim) / np.count_nonzero(data.mask)
+
+        print(f'{title}: {ratio:.4f}')
 
         # Direction map
         activity_mask = np.zeros_like(data.waveness)
         activity_mask[..., :3] = 100 / 255
         activity_mask[..., 3] = np.where(data.mask == 1, 0.1, 0)
 
-        alpha_map = np.where(
-            data.waveness[:, :, 3] >= lim,
-            data.waveness[:, :, 3],
-            0,
-        )
+        alpha_map = np.where(data.waveness[:, :, 3] >= lim, data.waveness[:, :, 3], 0)
 
         ax_map.imshow(activity_mask)
-        ax_map.imshow(
-            data.waveness[:, :, 0],
-            cmap=cmap,
-            vmin=-np.pi,
-            vmax=np.pi,
-            alpha=alpha_map,
-        )
+        ax_map.imshow(data.waveness[:, :, 0], cmap=cmap, vmin=-np.pi, vmax=np.pi, alpha=alpha_map)
         ax_map.set_aspect('equal', adjustable='box')
         hide_axis(ax_map)
 
@@ -895,50 +830,45 @@ def figure_plot_real_data(space, scale):
             score_scatter(ax_score, scores)
         else:
             percentage_hist(ax_score, scores)
-
-    # ------------------------------------------------------------------
-    # Colormap and score data
-    # ------------------------------------------------------------------
+    ### Colormap
     cmap = cyclic_hsv_cmap()
 
-    murphy_scores = []
-    murphy_pattern = ('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/murphy_all_data_mouse{}.npy')
-    for mouse in range(1, 5):
-        dataset = np.load(murphy_pattern.format(mouse), allow_pickle=True).item()
-        murphy_scores.extend(extract_scores(dataset))
+    ### Datasets
+    murphy= np.load('Fig 4 - datasets/murphy spontaneous example.npy')
+    murphy_scores = np.load('Fig 4 - datasets/murphy_waviness_scores.npy')
 
-    whisker_scores = [0.0382, 0.0313, 0.0789, 0.0333, 0.082, 0.4, 0.0695, 0.0513, 0.061, 0.0735, 0.1974, 0.0, 0.0053, 0.001, 0.0022, 0.0021, 0.0671,
-                     0.026, 0.0, 0.0894, 0.011, 0.009, 0.0386, 0.0681, 0.0516, 0.0383, 0.0389, 0.0188, 0.011, 0.0601, 0.0462, 0.0314, 0.0, 0.2353,
-                    0.1142, 0.114, 0.1841, 0.7381, 0.145, 0.0879, 0.3125, 0.0595, 0.1029, 0.128, 0.1663, 0.126, 0.1369, 0.0, 0.0577, 0.1338, 0.0179,
-                    0.082, 0.0984, 0.0053, 0.0043, 0.0927, 0.0387, 0.0646, 0.0631, 0.0067, 0.0291, 0.0571, 0.049, 0.0531, 0.0698, 0.1344, 0.0558,
-                    0.0341, 0.0, 0.0588, 0.2083, 0.0421, 0.0379, 0.029, 0.0053, 0.067, 0.0168, 0.0061, 0.0003, 0.0011]
+    whisker = np.load('Fig 4 - datasets/Whisker stimulus example.npy')
+    whisker_scores = np.load('Fig 4 - datasets/whisker_waviness_scores.npy')
 
-    # ------------------------------------------------------------------
-    # Datasets
-    # ------------------------------------------------------------------
-    murphy = np.load('/Users/arielrom/Downloads/murphy_56to60.npy')[:, :, 12352:12729]
+    spreading_depression =  np.load('Fig 4 - datasets/csd example.npy')
+    spreading_depression_scores = [0.73,0.71]
 
-    whisker = np.load('whisker_stim_right/232FN_whis_right1_Pos0.npy')[:, :, 130:-50][:, :, 250:298]
-
-    retina = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/retina_dF_F_normed.npy')
-
-    #spreading_depression = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/SD_df_f_NORMED.npy')[35:163, 40:168, 250:-290]
-    #spreading_depression = decrease_frame_rate(spreading_depression,20,10,)
-
-
-
-
-    picture_dir = ('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/Pictures')
-
-    plot_row(0, murphy, f'{picture_dir}/Tim_murphy_cortex.png', 'Tim Murphy Cortex', scores=murphy_scores, quiver_scale=2 * scale)
-
-    plot_row(1, whisker, f'{picture_dir}/Barrel Activation.png', 'Whisker stim right', scores=whisker_scores, crop_half=True,)
-
-    plot_row(2, spreading_depression, f'{picture_dir}/Spreading Depression.png', 'Spreading Depression' )
-
+    retina_data = np.load('Fig 4 - datasets/retina example.npz')
+    retina = retina_data["data"].astype(np.float32)
     retina_scores = np.array([0.96, 0.87, 0.83, 0.80, 0.77, 0.61])
 
-    plot_row(3, retina, f'{picture_dir}/Retina.png', 'Retina', scores=retina_scores, score_plot='scatter')
+    fully_awake = np.load('Fig 4 - datasets/vsd spontaneous example.npy')
+    vsd_fully_awake_scores = np.load('Fig 4 - datasets/fully_awake_waviness_scores.npy')
+
+    anesthetized = np.load('Fig 4 - datasets/anesthetized example.npy')
+    vsd_anesthetized_scores = np.load('Fig 4 - datasets/anesthetized_waviness_scores.npy')
+
+
+
+
+    print('Analyzing additional dataset example...')
+    plot_row(0, murphy, frame_idx=170, title='Tim Murphy Cortex', scores=murphy_scores, quiver_scale=2 * scale)
+    print('Analyzing whisker stimulation example...')
+    plot_row(1, whisker, frame_idx=20, title='Whisker stim right', scores=whisker_scores, crop_half=True,)
+    print('Analyzing spreading depression example...')
+    plot_row(2, spreading_depression, frame_idx=35, title='Spreading Depression', scores = spreading_depression_scores , score_plot='scatter')
+    print('Analyzing reinta example...')
+    plot_row(3, retina, frame_idx=175, title='Retina', scores=retina_scores, score_plot='scatter')
+    print('Analyzing awake VSD example...')
+    plot_row(4, fully_awake, frame_idx=24, title='Awake', scores=vsd_fully_awake_scores)
+    print('Analyzing anesthetized VSD example...')
+    plot_row(5, anesthetized, frame_idx=13, title='Anesthetized', scores=vsd_anesthetized_scores)
+
 
 
     # Bottom-row labels only
