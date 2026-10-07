@@ -14,7 +14,7 @@ from Algos.Create_Patterns import create_patterns, create_gaussians, create_gaus
 
 def data_type(type):
     if type == '2 gaussian':
-        dff1 , params = create_gaussians(N=64, M=128, frames=50, num_gaus=2, x0=30, y0=90, sd0=17, t0_0=16, sdT0=7, x1=30, y1=90-32,sd1=17, t0_1=16+12 ,sdT1=7)
+        dff1 , params = create_gaussians(N=64, M=128, frames=50, num_gaus=2, x0=30, y0=92, sd0=17, t0_0=16, sdT0=8, x1=30, y1=92-40,sd1=17, t0_1=16+12 ,sdT1=8)
 
         title = r'2 Gaussians'
         # Parameters for soft easing
@@ -35,7 +35,7 @@ def data_type(type):
 
 
 def schematic_figure():
-    brain_mask = np.load('/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/brain_mask.npy')
+    brain_mask = np.load('brain_mask.npy')
     brain_mask = brain_mask[:, :64]
     dff1, title = data_type('radial')
     dff2, title = data_type('2 gaussian')
@@ -48,8 +48,7 @@ def schematic_figure():
     frame_indices = [index + 1, index + 7, index + 13, index + 17, index + 21, index + 27, index + 33]  # , index + 36]
 
     # Load outer line
-    outer_line_rgb = np.load(
-        '/Users/arielrom/Desktop/תואר שני/Thesis/Waves Detection Algorithm/outer_line_rgb.npy')
+    outer_line_rgb = np.load('outer_line_rgb.npy')
     outer_line_rgb = np.where(outer_line_rgb[:, :, 0] == 1, np.nan, outer_line_rgb[:, :, 0])
 
     figsize_cm = (9, 4.5)  # example in cm
@@ -78,7 +77,7 @@ def schematic_figure():
 
     for i, frame_idx in enumerate(frame_indices):
         axes_row1[i].imshow(dff1[:, :, frame_idx], cmap=cmap, vmin=0, vmax=1)
-        axes_row1[i].imshow(outer_line_rgb[:, :64], cmap='gray', alpha=0.6)
+        #axes_row1[i].imshow(outer_line_rgb[:, :64], cmap='gray', alpha=0.6)
         axes_row1[i].axis('off')
         if i in [2, 3, 4]:
             x_middle = dff1.shape[1] // 2  # Middle of the image width (axis=1)
@@ -90,7 +89,7 @@ def schematic_figure():
 
     for i, frame_idx in enumerate(frame_indices):
         axes_row2[i].imshow(dff2[:, :, frame_idx], cmap=cmap, vmin=0, vmax=1)
-        axes_row2[i].imshow(outer_line_rgb[:, :64], cmap='gray', alpha=0.6)
+        #axes_row2[i].imshow(outer_line_rgb[:, :64], cmap='gray', alpha=0.6)
         axes_row2[i].axis('off')
         if i in [2, 3, 4]:
             x_middle = dff1.shape[1] // 2  # Middle of the image width (axis=1)
@@ -215,17 +214,10 @@ def schematic_figure():
     temporal_ax_2.spines['right'].set_visible(False)
     temporal_ax_2.spines['top'].set_visible(False)
 
-    fig.text(0.11, 0.69, 'Travelling Wave', va='center', ha='center',
-             rotation='vertical', fontsize=5, fontname='Arial')
-
-    fig.text(0.11, 0.29, 'Modular Sequence', va='center', ha='center',
-             rotation='vertical', fontsize=5, fontname='Arial')
-
-    fig.text(0.08, 0.89, 'a', va='center', ha='center',
-             fontsize=6, fontname='Arial')
-
-    fig.text(0.08, 0.49, 'b', va='center', ha='center',
-             fontsize=6, fontname='Arial')
+    fig.text(0.11, 0.69, 'Travelling Wave', va='center', ha='center',rotation='vertical', fontsize=5, fontname='Arial')
+    fig.text(0.11, 0.29, 'Modular Sequence', va='center', ha='center',rotation='vertical', fontsize=5, fontname='Arial')
+    fig.text(0.08, 0.89, 'a', va='center', ha='center',fontsize=6, fontname='Arial')
+    fig.text(0.08, 0.49, 'b', va='center', ha='center',fontsize=6, fontname='Arial')
 
     # plt.tight_layout()
     plt.savefig("cortex_double_row.pdf", bbox_inches='tight', dpi=1000)
