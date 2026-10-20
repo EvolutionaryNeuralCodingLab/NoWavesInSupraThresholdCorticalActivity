@@ -166,14 +166,6 @@ class FlowAnalyze:
             else:
                 flow, convergence = horn_schunck(image1, image2, alpha, num_iter)
 
-            #### If phase map
-
-            #phase1 = np.mod(self.dff[:, :, i], 2 * np.pi)
-            #phase2 = np.mod(self.dff[:, :, i + 1], 2 * np.pi)
-            #image1 = np.exp(1j * phase1)
-            #image2 = np.exp(1j * phase2)
-            #flow, convergence = horn_schunck(image1, image2, alpha, num_iter)
-
             self.flows.append(flow)
 
             self.velocities[:, :, i, 0] = flow[:, :, 0]
@@ -189,41 +181,6 @@ class FlowAnalyze:
             all_convergence.append(convergence)
         self.converge = all_convergence
 
-        def velocities():
-            # Convert to NumPy array of shape (num_curves, num_iterations)
-            all_convergence_array = np.array(all_convergence)
-
-            # Compute mean and std across curves
-            avg_convergence = np.mean(all_convergence_array, axis=0)
-            std_convergence = np.std(all_convergence_array, axis=0)
-
-            # Plot mean with shaded std band
-            iterations = range(1, len(avg_convergence) + 1)
-
-            plt.plot(iterations, avg_convergence, marker='.', color='teal', label='Mean Convergence')
-            plt.fill_between(iterations,
-                             avg_convergence - std_convergence,
-                             avg_convergence + std_convergence,
-                             color='teal', alpha=0.3, label='±1 Std Dev')
-
-            plt.xlabel('Iteration')
-            plt.ylabel('Difference in Magnitude ')
-            plt.title('Horn-Schunck Convergence with Std Deviation - Cortex III')
-            plt.grid(True)
-            plt.legend()
-            plt.tight_layout()
-            plt.show()
-
-        #means = np.mean(np.array(all_convergence), axis=0)
-        #plt.figure(figsize=(8, 5))
-        #plt.plot(means, linewidth=2)
-        #plt.xlabel("Iteration")
-        #plt.ylabel("Mean flow update (L2 norm)")
-        #plt.title("Horn–Schunck Convergence")
-        #plt.grid(True, alpha=0.3)
-        #plt.xlim([0,150])
-        #plt.tight_layout()
-        #plt.show()
 
     def calculate_waveness(self, type):
 
@@ -245,46 +202,11 @@ class FlowAnalyze:
         down = np.linalg.norm(self.abs_sum_phase_space[..., -1, :], axis=-1)
         ratios = np.divide(up, down, where=down != 0, out=np.zeros_like(up))
 
-        # neighborhood_size = ((2 * self.n + 1) ** 2 - 4 * (2 * self.n))   ## First order
-        neighborhood_size = (2 * self.n + 1) ** 2 - (4 * 2 * self.n) - (4 * (2 * n - 2))  ## Second order
-
         brain_mask = np.load('brain_mask.npy')
         if self.dff.shape[1] == 64:
             brain_mask = brain_mask[:, :64]
 
         valid_mask = variance > (beta * 0.25)
-
-        activated_pixels = np.count_nonzero(valid_mask)
-        brain_activity_area = 12546  # for 128x128
-
-        area = round(activated_pixels / brain_activity_area, 2)
-
-        def velocities():
-            velocity_magnitudes = np.linalg.norm(self.velocities, axis=-1)  # shape: (N, M, frames-2)
-            valid_magnitudes = velocity_magnitudes[valid_mask]  # 1D array of valid values
-            valid_magnitudes = np.ravel(valid_magnitudes)
-
-            # Define fixed bin edges between 0 and 5
-            bin_edges = np.linspace(0, 0.5, 51)  # 50 bins → 51 edges
-
-            # Histogram using fixed bin edges
-            counts, bins = np.histogram(valid_magnitudes, bins=bin_edges)
-
-            # Convert to percentages
-            percentages = counts / counts.sum() * 100
-
-            # Plot
-            plt.bar(bins[:-1], percentages, width=np.diff(bins), align='edge',
-                    color='mediumseagreen', edgecolor='black')
-
-            # Set x-axis limits to match your fixed bin range
-            plt.xlim(0, 0.5)
-
-            plt.xlabel('Velocity Magnitude ')
-            plt.ylabel('Percentage of Values (%)')
-            plt.title(f'Radial Wave')  # , Relative area = {area}')
-            plt.grid(True)
-            plt.show()
 
         if type == 'cortex':
             # filtered_map = np.where(valid_mask & (brain_mask > 0), variance, 0)
@@ -292,90 +214,6 @@ class FlowAnalyze:
 
         else:
             filtered_map = np.where(valid_mask, variance, 0)
-
-        def compute_ftle(vel_x, vel_y, dt=1.0):
-
-            def runge_kutta(vel_x, vel_y, X_final, Y_final, dt):
-                """
-                Runge-Kutta 4th order integration for velocity field.
-
-                Parameters:
-                    vel_x, vel_y (numpy array): The velocity fields (MxNxT)
-                    X_final, Y_final (numpy array): The final positions to be updated
-                    dt (float): Time step
-
-                Returns:
-                    X_final, Y_final (numpy array): Updated positions
-                """
-                # 1st stage: k1
-                kx1 = vel_x * dt
-                ky1 = vel_y * dt
-
-                # 2nd stage: k2
-                kx2 = (vel_x + 0.5 * kx1) * dt
-                ky2 = (vel_y + 0.5 * ky1) * dt
-
-                # 3rd stage: k3
-                kx3 = (vel_x + 0.5 * kx2) * dt
-                ky3 = (vel_y + 0.5 * ky2) * dt
-
-                # 4th stage: k4
-                kx4 = (vel_x + kx3) * dt
-                ky4 = (vel_y + ky3) * dt
-
-                # Update final positions based on Runge-Kutta method
-                X_final += (kx1 + 2 * kx2 + 2 * kx3 + kx4) / 6
-                Y_final += (ky1 + 2 * ky2 + 2 * ky3 + ky4) / 6
-
-                return X_final, Y_final
-
-            """
-            Computes the FTLE field for a given velocity field.
-
-            Parameters:
-                vel_x (numpy array): MxNxT array of x velocity components
-                vel_y (numpy array): MxNxT array of y velocity components
-                dt (float): Time step between frames
-
-            Returns:
-                numpy array: MxN array of FTLE values
-            """
-
-            print("Max velocity:", np.max(vel_x), np.max(vel_y))
-            print("Min velocity:", np.min(vel_x), np.min(vel_y))
-
-            M, N, T = vel_x.shape
-            X, Y = np.meshgrid(np.arange(N), np.arange(M))
-            X_final, Y_final = X.astype(np.float64), Y.astype(np.float64)  # Ensure float type
-
-            # Integrate flow map over time using Euler method
-            for t in range(T):
-                X_final, Y_final = runge_kutta(vel_x[:, :, t], vel_y[:, :, t], X_final, Y_final, dt)
-
-            # Compute Jacobian (Deformation Gradient)
-            dXdx = np.gradient(X_final, axis=1)
-            dXdy = np.gradient(X_final, axis=0)
-            dYdx = np.gradient(Y_final, axis=1)
-            dYdy = np.gradient(Y_final, axis=0)
-
-            # Compute FTLE
-            ftle_field = np.zeros((M, N))
-            for i in range(M):
-                for j in range(N):
-                    F = np.array([[dXdx[i, j], dXdy[i, j]],
-                                  [dYdx[i, j], dYdy[i, j]]])
-                    C = F.T @ F  # Cauchy-Green strain tensor
-                    eigvals = np.linalg.eigvals(C)
-                    max_eigval = max(eigvals)
-                    ftle_field[i, j] = np.log(np.sqrt(max_eigval)) / T
-
-            return ftle_field
-
-        # ftle_field = compute_ftle(self.velocities[:,:,:,0],self.velocities[:,:,:,1])
-        # plt.imshow(returns_to_origin, cmap='viridis', interpolation='nearest',vmin=0,vmax=100)
-        # plt.colorbar()
-        # plt.title('Finite Time Lyapunov Exponent - Cortex 2')
-        # plt.show()
 
         def find_max_min(data, sigma, prominence, lim_up, lim_down, height=None, distance=5):
             """
@@ -837,19 +675,6 @@ class FlowAnalyze:
                 else:
                     self.waveness[h, j, 3] = 0
 
-        num_ones = np.sum(self.mask == 1)
-        binary_map = (self.waveness[:, :, 3] > lim).astype(int)
-
-        # labeled_array, num_features = ndimage.label(binary_map)
-        # sizes = ndimage.sum(binary_map, labeled_array, range(1, num_features + 1))
-        # weighted_avg_size = np.average(sizes, weights=sizes)
-
-        # print(weighted_avg_size/  brain_activity_area)
-        # print(area)
-        # plt.imshow(wave_front_map, cmap='viridis', aspect='equal')
-        # plt.colorbar(label='Value')
-        # plt.title('Wave Front Map')
-        # plt.show()
 
         self.Waveness = True
 
@@ -1767,21 +1592,19 @@ def compare_gaussians_width(noise, std, N=128, M=64, frames=65, x0=32, y0=70, sd
 
 
 
-
-
 def diff_conditions_comparison():
     ### Velocities ###
-    gaussian_vel_015 = [0.027, 0.051, 0.077, 0.025, 0.004]
-    plane_vel_015 = [0.997, 1.000, 1.000, 0.997, 0.986]
-    radial_vel_015 = [0.955, 0.988, 0.991, 0.981, 0.964]
+    gaussian_vel_015 = np.mean([[0.027, 0.051, 0.077, 0.025, 0.004]  , [0.033, 0.0493, 0.0838, 0.0253, 0.0055] , [0.032, 0.0518, 0.0685, 0.0338, 0.0029] ], axis=0)
+    plane_vel_015 = np.mean([[0.997, 1.000, 1.000, 0.997, 0.986]  , [0.9994, 1.0, 1.0, 0.9979, 0.9857] , [1.0, 1.0, 1.0, 0.9976, 0.9851] ], axis=0)
+    radial_vel_015 = np.mean([[0.955, 0.988, 0.991, 0.981, 0.964] , [0.9828, 0.9919, 0.9904, 0.984, 0.9642] , [0.9745, 0.9909, 0.9905, 0.9824, 0.9652] ], axis=0)
 
-    gaussian_vel_03 = [0.024, 0.047, 0.022, 0.000, 0.000]
-    plane_vel_03 = [0.829, 1.000, 0.999, 0.997, 0.970]
-    radial_vel_03 = [0.649, 0.982, 0.987, 0.984, 0.948]
+    gaussian_vel_03 =np.mean([ [0.024, 0.047, 0.022, 0.000, 0.000] , [0.0308, 0.042, 0.0174, 0.0, 0.0] , [0.0305, 0.0452, 0.0118, 0.0, 0.0] ], axis=0)
+    plane_vel_03 = np.mean([[0.829, 1.000, 0.999, 0.997, 0.970]    , [0.881, 0.9988, 1.0, 0.9966, 0.9723] , [0.892, 0.9992, 0.9998, 0.9976, 0.9675] ], axis=0)
+    radial_vel_03 = np.mean([[0.649, 0.982, 0.987, 0.984, 0.948]   , [0.7089, 0.9909, 0.9878, 0.9841, 0.9584] , [0.7147, 0.9909, 0.9857, 0.984, 0.9485] ], axis=0)
 
-    gaussian_vel_06 = [0.034, 0.026, 0.002, 0.000, 0.000]
-    plane_vel_06 = [0.122, 0.794, 0.985, 0.989, 0.939]
-    radial_vel_06 = [0.002, 0.636, 0.973, 0.978, 0.928]
+    gaussian_vel_06 =np.mean([ [0.034, 0.026, 0.002, 0.000, 0.000]  , [0.0378, 0.0229, 0.0012, 0.0, 0.0] , [0.0341, 0.0225, 0.0, 0.0, 0.0] ], axis=0)
+    plane_vel_06 = np.mean([[0.122, 0.794, 0.985, 0.989, 0.939]   , [0.1148, 0.7769, 0.9894, 0.9927, 0.9307] , [0.1128, 0.8198, 0.987, 0.9895, 0.9318] ], axis=0)
+    radial_vel_06 = np.mean([[0.002, 0.636, 0.973, 0.978, 0.928]  , [0.0018, 0.7098, 0.9844, 0.9788, 0.9161] , [0.0041, 0.7048, 0.9832, 0.9788, 0.9113] ], axis=0)
 
     figsize_cm = (18, 15)  # example in cm
     figsize_in = tuple(x / 2.54 for x in figsize_cm)  # convert to inches
@@ -1826,17 +1649,17 @@ def diff_conditions_comparison():
     axs[2, 0].tick_params(axis='y', labelsize=8)
 
     ###### Intesities ####
-    two_gauss_int_015noise = [0, 0.053, 0.100, 0.086, 0.072]
-    plane_int_015noise = [0, 1.000, 1.000, 1.000, 1.000]
-    radial_int_015noise = [0, 0.991, 0.989, 0.989, 0.991]
+    two_gauss_int_015noise = np.mean([[0, 0.053, 0.100, 0.086, 0.072]  , [0, 0.0455, 0.0968, 0.0745, 0.0803]  , [0, 0.0345, 0.1089, 0.0808, 0.069] ], axis=0)
+    plane_int_015noise = np.mean([[0, 1.000, 1.000, 1.000, 1.000]  ,  [0, 1.0, 0.9997, 1.0, 1.0]  ,  [0, 0.9997, 1.0, 1.0, 0.9998] ], axis=0)
+    radial_int_015noise = np.mean([[0, 0.991, 0.989, 0.989, 0.991]   , [0, 0.9878, 0.9888, 0.9912, 0.9899]  , [0, 0.9894, 0.9893, 0.9899, 0.9897] ], axis=0)
 
-    two_gauss_int_03noise = [0, 0.001, 0.009, 0.013, 0.021]
-    plane_int_03noise = [0, 0.999, 0.999, 0.998, 0.999]
-    radial_int_03noise = [0, 0.991, 0.987, 0.987, 0.988]
+    two_gauss_int_03noise = np.mean([[0, 0.001, 0.009, 0.013, 0.021]  , [0, 0.0032, 0.0059, 0.014, 0.018]  , [0, 0.0024, 0.0087, 0.0094, 0.0135] ], axis=0)
+    plane_int_03noise = np.mean([[0, 0.999, 0.999, 0.998, 0.999]   ,  [0, 0.9989, 0.999, 0.9995, 0.9995]  , [0, 0.9992, 0.9997, 0.9998, 0.9993] ], axis=0)
+    radial_int_03noise = np.mean([[0, 0.991, 0.987, 0.987, 0.988]  , [0, 0.9891, 0.9875, 0.9878, 0.9896]  , [0, 0.9897, 0.987, 0.9868, 0.9873] ], axis=0)
 
-    two_gauss_int_06noise = [0, 0.003, 0.001, 0.001, 0.001]
-    plane_int_06noise = [0, 0.765, 0.942, 0.976, 0.982]
-    radial_int_06noise = [0, 0.763, 0.930, 0.967, 0.972]
+    two_gauss_int_06noise = np.mean([[0, 0.003, 0.001, 0.001, 0.001]  , [0, 0.0026, 0.0033, 0.0009, 0.0007]  , [0, 0.0039, 0.0018, 0.002, 0.0015] ], axis=0)
+    plane_int_06noise = np.mean([[0, 0.765, 0.942, 0.976, 0.982]  , [0, 0.7249, 0.9481, 0.9837, 0.9872]  ,  [0, 0.7114, 0.9525, 0.9835, 0.9906] ], axis=0)
+    radial_int_06noise = np.mean([[0, 0.763, 0.930, 0.967, 0.972]  , [0, 0.7275, 0.9403, 0.975, 0.9825]  , [0, 0.716, 0.9432, 0.9783, 0.9848] ], axis=0)
 
     x_axis = np.array([1, 2, 3, 4, 5])
 
@@ -1868,17 +1691,17 @@ def diff_conditions_comparison():
 
     ### WIDTHS ###
 
-    gaussians_width_015 = [0.3898, 0.1841, 0.121, 0.0964, 0.0841, 0.0622, 0.0756, 0.0798, 0.0647, 0.0821]
-    plane_width_015 = [0.9854, 0.9941, 0.9987, 0.9945, 0.8798, 0.7849, 0.8155, 0.8843, 0.9228,0.9483]
-    radial_width_015 = [0.9876, 0.9851, 0.9917, 0.9848, 0.9549, 0.9191, 0.9222, 0.9069, 0.889, 0.8745]
+    gaussians_width_015 =  np.mean([ [0.3898, 0.1841, 0.121, 0.0964, 0.0841, 0.0622, 0.0756, 0.0798, 0.0647, 0.0821]  , [0.3051, 0.1925, 0.1009, 0.0709, 0.0738, 0.0919, 0.065, 0.0659, 0.0651, 0.081] , [0.4068, 0.1967, 0.0838, 0.0975, 0.0631, 0.0686, 0.0784, 0.086, 0.0623, 0.076] ], axis=0)
+    plane_width_015 =  np.mean([ [0.9854, 0.9941, 0.9987, 0.9945, 0.8798, 0.7849, 0.8155, 0.8843, 0.9228,0.9483]   , [0.984, 0.9936, 0.9989, 0.9955, 0.8734, 0.7736, 0.8193, 0.8837, 0.9244, 0.9472] , [0.983, 0.9939, 0.9989, 0.9952, 0.8683, 0.7788, 0.8147, 0.8821, 0.9302, 0.9469] ], axis=0)
+    radial_width_015 =  np.mean([ [0.9876, 0.9851, 0.9917, 0.9848, 0.9549, 0.9191, 0.9222, 0.9069, 0.889, 0.8745]  , [0.9884, 0.9859, 0.9904, 0.9854, 0.9528, 0.9259, 0.9241, 0.91, 0.8914, 0.88] , [0.9899, 0.9868, 0.9918, 0.9843, 0.9524, 0.9235, 0.922, 0.913, 0.8915, 0.8715] ], axis=0)
 
-    gaussians_width_03 = [0.1017, 0.0084, 0.0093, 0.0031, 0.0087, 0.0139, 0.0214, 0.0151, 0.0257, 0.0381]
-    plane_width_03 =[0.9645, 0.9936, 0.9961, 0.9732, 0.9697, 0.9812, 0.9854, 0.9865, 0.9881, 0.9873]
-    radial_width_03 = [0.9751, 0.9844, 0.9889, 0.9742, 0.9467, 0.9381, 0.9379, 0.9345, 0.9321, 0.9379]
+    gaussians_width_03 =  np.mean([ [0.1017, 0.0084, 0.0093, 0.0031, 0.0087, 0.0139, 0.0214, 0.0151, 0.0257, 0.0381]  ,[0.0169, 0.0042, 0.0, 0.0083, 0.0161, 0.0106, 0.0143, 0.0242,0.0242, 0.0281] , [0.0, 0.0, 0.0019, 0.0104, 0.006, 0.0079, 0.0143, 0.0244,0.0261, 0.0233] ], axis=0)
+    plane_width_03 = np.mean([ [0.9645, 0.9936, 0.9961, 0.9732, 0.9697, 0.9812, 0.9854, 0.9865, 0.9881, 0.9873] ,[0.9652, 0.9937, 0.996, 0.9747, 0.9747, 0.9828, 0.9868, 0.9872, 0.9888, 0.9875]  , [0.9653, 0.9941, 0.9952, 0.9747, 0.9751, 0.9803, 0.9852, 0.9865, 0.988, 0.9876] ], axis=0)
+    radial_width_03 = np.mean([  [0.9751, 0.9844, 0.9889, 0.9742, 0.9467, 0.9381, 0.9379, 0.9345, 0.9321, 0.9379] , [0.9751, 0.9843, 0.9915, 0.9713, 0.9442, 0.9456, 0.9397, 0.9389, 0.9299, 0.9387]  ,  [0.9761, 0.9838, 0.9896, 0.9703, 0.9501, 0.9422, 0.9378, 0.9376, 0.9387, 0.9374] ], axis=0)
 
-    gaussians_width_06 = [0.0, 0.0, 0.0035, 0.0, 0.0, 0.0009, 0.0016, 0.001, 0.0014, 0.0009]
-    plane_width_06 = [0.8696, 0.9825, 0.9825, 0.9737, 0.9498, 0.8673, 0.7043, 0.5023, 0.2843, 0.1566]
-    radial_width_06 = [0.9267, 0.9825, 0.979, 0.9626, 0.922, 0.851, 0.6849, 0.4905, 0.2756, 0.1662]
+    gaussians_width_06 =  np.mean([ [0.0, 0.0, 0.0035, 0.0, 0.0, 0.0009, 0.0016, 0.001, 0.0014, 0.0009]  , [0.0156, 0.004, 0.0, 0.0, 0.0, 0.0, 0.001, 0.0007,0.0010, 0.0008] , [0.0, 0.0, 0.0, 0.0, 0.0013, 0.0004, 0.0003, 0.002,0.0008, 0.0004] ], axis=0)
+    plane_width_06 =  np.mean([ [0.8696, 0.9825, 0.9825, 0.9737, 0.9498, 0.8673, 0.7043, 0.5023, 0.2843, 0.1566]  ,[0.8684, 0.9832, 0.987, 0.9798, 0.952, 0.8502, 0.7099, 0.5025, 0.284, 0.1444], [0.8734, 0.9846, 0.9838, 0.9743, 0.9479, 0.859, 0.6891, 0.4771, 0.292, 0.1359] ], axis=0)
+    radial_width_06 = np.mean([  [0.9267, 0.9825, 0.979, 0.9626, 0.922, 0.851, 0.6849, 0.4905, 0.2756, 0.1662] , [0.8684, 0.9832, 0.987, 0.9798, 0.952, 0.8502, 0.7099, 0.5025, 0.284, 0.1444] , [0.9303, 0.9811, 0.974, 0.9626, 0.9264, 0.8425, 0.6799, 0.5041, 0.3172, 0.1534] ], axis=0)
 
     x_axis = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
@@ -1910,17 +1733,17 @@ def diff_conditions_comparison():
     axs[2, 2].tick_params(axis='y', labelsize=8)
 
     ###### GAPS ####
-    two_gaussians_gaps_015 = [0.080, 0.066, 0.065, 0.082, 0.077, 0.060, 0.070, 0.073, 0.078]
-    plane_gaps_015 = [1.000, 0.967, 0.967, 0.966, 0.966, 0.965, 0.964, 0.964, 0.963]
-    radial_gaps_015 = [0.989, 0.992, 0.994, 0.996, 0.995, 0.995, 0.995, 0.994, 0.995]
+    two_gaussians_gaps_015 = np.mean([[ 0.080, 0.066, 0.065, 0.082, 0.077, 0.060, 0.070, 0.073, 0.078], [0.0734, 0.0737, 0.076, 0.0842, 0.081, 0.0729, 0.0776, 0.0813, 0.0692] , [0.0821, 0.0728, 0.0637, 0.0629, 0.0765, 0.0829, 0.0743, 0.0743, 0.0829] ], axis=0)
+    plane_gaps_015 = np.mean([ [1.000, 0.967, 0.967, 0.966, 0.966, 0.965, 0.964, 0.964, 0.963]  ,  [1.0, 0.9722, 0.9718, 0.9714, 0.971, 0.9706, 0.9701, 0.9688, 0.9692] ,  [1.0, 0.9723, 0.9716, 0.9714, 0.971, 0.9706, 0.9698, 0.9696, 0.9688] ], axis=0)
+    radial_gaps_015 = np.mean([ [0.989, 0.992, 0.994, 0.996, 0.995, 0.995, 0.995, 0.994, 0.995]  ,  [0.9904, 0.9906, 0.9935, 0.9944, 0.9943, 0.9941, 0.9942, 0.9945, 0.9927]  ,  [0.9897, 0.9908, 0.9935, 0.9934, 0.9942, 0.9939, 0.9944, 0.9943, 0.9938] ], axis=0)
 
-    two_gaussians_gaps_03noise = [0.018, 0.019, 0.015, 0.024, 0.024, 0.023, 0.026, 0.017, 0.020]
-    plane_gaps_03noise = [0.999, 0.967, 0.967, 0.965, 0.964, 0.964, 0.964, 0.963, 0.963]
-    radial_gaps_03noise = [0.988, 0.992, 0.993, 0.994, 0.997, 0.995, 0.995, 0.996, 0.994]
+    two_gaussians_gaps_03noise = np.mean([ [0.018, 0.019, 0.015, 0.024, 0.024, 0.023, 0.026, 0.017, 0.020] ,[0.0175, 0.0161, 0.0107, 0.0201, 0.0217, 0.0225, 0.0227, 0.0132, 0.03] ,  [0.0143, 0.0188, 0.0252, 0.0252, 0.0121, 0.0159, 0.0141, 0.0204, 0.0272] ], axis=0)
+    plane_gaps_03noise = np.mean([ [0.999, 0.967, 0.967, 0.965, 0.964, 0.964, 0.964, 0.963, 0.963]   , [0.9995, 0.9721, 0.9716, 0.971, 0.9705, 0.9701, 0.9694, 0.9692, 0.9692] ,  [0.9998, 0.9718, 0.9717, 0.9713, 0.9706, 0.9696, 0.9688, 0.969, 0.9684] ], axis=0)
+    radial_gaps_03noise = np.mean([ [0.988, 0.992, 0.993, 0.994, 0.997, 0.995, 0.995, 0.996, 0.994]   , [0.9864, 0.9893, 0.9907, 0.9919, 0.994, 0.9926, 0.9935, 0.9938, 0.9922] ,  [0.9881, 0.9885, 0.9918, 0.9926, 0.9923, 0.9923, 0.9941, 0.9935, 0.9927] ], axis=0)
 
-    two_gaussians_gaps_06noise = [0.002, 0.000, 0.001, 0.001, 0.001, 0.002, 0.001, 0.001, 0.001]
-    plane_gaps_06noise = [0.985, 0.951, 0.948, 0.947, 0.949, 0.943, 0.947, 0.944, 0.942]
-    radial_gaps_06noise = [0.971, 0.974, 0.976, 0.974, 0.977, 0.974, 0.979, 0.976, 0.975]
+    two_gaussians_gaps_06noise = np.mean([ [0.002, 0.000, 0.001, 0.001, 0.001, 0.002, 0.001, 0.001, 0.001] ,[0.0015, 0.0005, 0.0015, 0.0003, 0.0, 0.0008, 0.0008, 0.0011, 0.0019] , [0.0017, 0.0005, 0.0015, 0.0008, 0.0003, 0.0011, 0.0019, 0.0011, 0.0014] ], axis=0)
+    plane_gaps_06noise = np.mean([ [0.985, 0.951, 0.948, 0.947, 0.949, 0.943, 0.947, 0.944, 0.942]  ,[0.9879, 0.9591, 0.9585, 0.9582, 0.9618, 0.9579, 0.9556, 0.9556, 0.9536] , [0.9899, 0.9617, 0.9593, 0.9578, 0.9606, 0.9592, 0.9551, 0.9557, 0.9529] ], axis=0)
+    radial_gaps_06noise = np.mean([ [0.971, 0.974, 0.976, 0.974, 0.977, 0.974, 0.979, 0.976, 0.975]  , [0.9843, 0.9807, 0.9801, 0.985, 0.9842, 0.9879, 0.9861, 0.9849, 0.9806] , [0.9819, 0.9825, 0.9823, 0.9847, 0.9865, 0.9849, 0.9862, 0.9839, 0.9851] ], axis=0)
 
     x_axis = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
 
