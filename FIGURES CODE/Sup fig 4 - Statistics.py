@@ -193,7 +193,7 @@ ax4.text(
 
 
 
-data = np.load(f'Sup fig 5/murphy_processed_data.npz')
+data = np.load(f'Sup fig 4/murphy_processed_data.npz')
 
 scores = data['scores']
 areas = data['areas']
@@ -398,7 +398,7 @@ for (r, c), cell in table.get_celld().items():
 # VSD FILES
 # ============================================================
 vsd_data = np.load(
-    "Sup fig 5/vsd_compact.npz"
+    "Sup fig 4/vsd_compact.npz"
 )
 
 fully_awake_scores = vsd_data["fully_awake_scores"]
