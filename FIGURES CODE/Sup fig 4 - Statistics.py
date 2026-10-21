@@ -9,7 +9,7 @@ from matplotlib.ticker import PercentFormatter
 plt.rcParams["pdf.fonttype"] = 42
 plt.rcParams["ps.fonttype"] = 42
 
-def process_data(data, min_area, offset,fps=60):
+def process_data(data, min_area, offset,fps=12.5):
     scores, areas, durations, energies, intervals = [], [], [], [], []
 
     for i, video in enumerate(data):
@@ -17,7 +17,7 @@ def process_data(data, min_area, offset,fps=60):
 
         for interval, values in sorted(data[video].items()):
             start, end = interval[0] + offset * i, interval[1] + offset * i
-            if values['area'] > min_area and start >= last_end and values['duration']/fps<20:
+            if values['area'] > min_area and start >= last_end:
                 scores.append(values['ratio'])
                 areas.append(values['area'])
                 durations.append(values['duration'] / fps)
@@ -140,12 +140,7 @@ table_data = [
 
 ax4.axis('off')
 
-table = ax4.table(
-    cellText=table_data,
-    colWidths=colWidths,
-    cellLoc='center',
-    bbox=bb_box
-)
+table = ax4.table( cellText=table_data, colWidths=colWidths, cellLoc='center', bbox=bb_box )
 
 table.auto_set_font_size(False)
 table.set_fontsize(font_size)  # slightly larger since it's full size
@@ -172,22 +167,13 @@ ax4.text(
     x0 - 0.25,      # slightly left of the table
     y0 + h - 0.275,  # around the height of rows 1–2
     "Baseline\nModel",
-    va='center',
-    ha='center',
-    fontsize=font_size,
-    fontweight='bold'
-)
+    va='center', ha='center', fontsize=font_size, fontweight='bold')
 
 # Position of Experiment B (rows 3 to end)
 ax4.text(
     x0 - 0.25,
     y0 + h - 0.575,  # adjust so it aligns with middle of lower block
-    "Predictors\nModel",
-    va='center',
-    ha='center',
-    fontsize=font_size,
-    fontweight='bold'
-)
+    "Predictors\nModel", va='center', ha='center', fontsize=font_size, fontweight='bold' )
 
 
 
@@ -408,9 +394,6 @@ fully_awake_durations = vsd_data["fully_awake_durations"]
 anesthetized_scores = vsd_data["anesthetized_scores"]
 anesthetized_areas = vsd_data["anesthetized_areas"]
 anesthetized_durations = vsd_data["anesthetized_durations"]
-
-print("Fully awake events:", len(fully_awake_scores))
-print("Anesthetized events:", len(anesthetized_scores))
 
 print("Fully awake events:", len(fully_awake_scores))
 print("Anesthetized events:", len(anesthetized_scores))
